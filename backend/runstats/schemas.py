@@ -335,6 +335,36 @@ class SyncProgressEvent(SerializableModel):
     percent: int = Field(ge=0, le=100)
 
 
+class FitFolderImportRequest(SerializableModel):
+    """Request body for importing historical FIT files from a local folder."""
+
+    device_id: str
+    folder_path: str = Field(min_length=1, max_length=1000)
+    recursive: bool = True
+
+
+class ImportedActivityFileResult(SerializableModel):
+    """Per-file result from an activity import run."""
+
+    source_id: str
+    status: Literal["created", "skipped", "failed"]
+    message: str
+    sha256: str | None
+    activity_id: str | None
+    raw_import_id: str | None
+    archived: bool
+
+
+class FitFolderImportResponse(SerializableModel):
+    """Summary from a folder-based FIT activity import."""
+
+    created: int
+    skipped: int
+    failed: int
+    raw_files_archived: int
+    files: list[ImportedActivityFileResult]
+
+
 class AppSettingsResponse(SerializableModel):
     """Local application settings."""
 

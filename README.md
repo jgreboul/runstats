@@ -38,6 +38,9 @@ Local data under `data/` is ignored by source control except for
 
 ## Install
 
+For a step-by-step local development walkthrough, see
+`docs/local-setup.md`.
+
 ```bash
 npm run install:all
 ```

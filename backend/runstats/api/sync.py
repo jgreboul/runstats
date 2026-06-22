@@ -8,6 +8,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Request, WebSocket
 from sqlalchemy.orm import Session
 
+from runstats.bluetooth import WatchProvider
+from runstats.config import Settings
 from runstats.db.session import get_db_session
 from runstats.schemas import ManualSyncRequest, SyncRunListResponse, SyncRunResponse
 from runstats.services.sync_service import SyncProgressStore, SyncService
@@ -25,7 +27,13 @@ def start_manual_sync(
     """Start a fake manual sync run."""
 
     progress_store: SyncProgressStore = request.app.state.sync_progress_store
-    return SyncService(session).start_manual_sync(sync_request, progress_store)
+    watch_provider: WatchProvider = request.app.state.watch_provider
+    runtime_settings: Settings = request.app.state.settings
+    return SyncService(
+        session,
+        watch_provider,
+        runtime_settings,
+    ).start_manual_sync(sync_request, progress_store)
 
 
 @router.get("", response_model=SyncRunListResponse)

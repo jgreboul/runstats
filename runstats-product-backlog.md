@@ -147,88 +147,7 @@ The user can see real running activities, laps, samples, and trends in the UI.
 
 ### Backlog Items
 
-#### P6-001: Add Raw Import Archive
-
-Implement raw import metadata and default file retention for archiving and
-replay.
-
-Acceptance criteria:
-
-- Raw exports are hashed.
-- Duplicate raw files are detected.
-- Raw files are retained by default.
-- Archive path behavior is configurable through app settings.
-
-Validation:
-
-- Unit tests for hashing and duplicate detection.
-- Integration test archived file metadata points to retained files.
-
-#### P6-002: Implement FIT Activity Parser
-
-Parse FIT activity files into normalized activity records.
-
-Acceptance criteria:
-
-- Distance, duration, pace, heart rate, cadence, elevation, laps, and samples are
-  extracted when present.
-- Missing optional fields are handled safely.
-- Values are stored in canonical metric units.
-
-Validation:
-
-- Unit tests with sample FIT fixtures.
-- Edge case tests for missing fields and malformed files.
-
-#### P6-003: Implement Activity Import Service
-
-Persist parsed activities, laps, samples, and raw import metadata transactionally.
-
-Acceptance criteria:
-
-- Duplicate activities are not imported twice.
-- A failed import does not partially write an activity.
-- Import counts are reported to sync runs.
-
-Validation:
-
-- Integration tests against temporary SQLite database.
-- Duplicate and rollback tests.
-
-#### P6-004: Add Folder Import Bootstrap
-
-Support importing historical FIT files from a local folder as a bootstrap and
-fallback path.
-
-Acceptance criteria:
-
-- `POST /api/imports/fit-folder` imports a local folder.
-- User can run a documented command to import a folder.
-- Import summary reports created, skipped, and failed files.
-- The UI can render imported activities.
-- Folder import works even when direct watch export capability is unavailable.
-
-Validation:
-
-- CLI or service tests with fixture files.
-- API integration test for folder import summary.
-- Manual smoke test with seeded or sample FIT files.
-
-#### P6-005: Connect Verified Direct Activity Export
-
-Connect direct watch activity export only if the Forerunner capability probe
-confirms it is available.
-
-Acceptance criteria:
-
-- Direct export uses the same raw archive and import pipeline as folder import.
-- Unsupported direct export produces a clear UI and sync-history message.
-- The importer remains independent from Garmin-specific protocol details.
-
-Validation:
-
-- Unit tests with fake provider exports.
-- Sync integration tests with direct-export supported and unsupported providers.
+All Phase 6 backlog items are complete. See `DONE Backlog Items`.
 
 ## Phase 7: Health Import Pipeline
 
@@ -1264,3 +1183,115 @@ Validation:
 - Added frontend interaction tests for running a probe and showing updated
   capability state.
 - Manual Forerunner 935 hardware validation was not run in this environment.
+
+### P6-001: Add Raw Import Archive
+
+Status: Done
+
+Implemented:
+
+- Added activity import archiving through `ActivityImportService`, hashing every
+  FIT payload with SHA-256 before persistence.
+- Retained imported FIT files under the configured raw archive path by default.
+- Used persisted `app_settings.raw_archive_path` when present, falling back to
+  runtime `RUNSTATS_RAW_ARCHIVE_PATH`.
+- Detected duplicate raw files by device, kind, and SHA-256 before parsing or
+  writing a second raw import record.
+- Stored `raw_imports` metadata pointing at the retained archive file.
+
+Validation:
+
+- Added service tests for hashing, duplicate raw payload detection, persisted
+  archive path behavior, and retained-file metadata.
+- Ran targeted backend tests successfully:
+  `uv run pytest tests/test_phase6_fit_parser.py tests/test_phase6_import_service.py tests/test_phase6_api.py tests/test_phase6_sync_imports.py tests/test_phase4_services.py tests/test_phase4_api.py`.
+
+### P6-002: Implement FIT Activity Parser
+
+Status: Done
+
+Implemented:
+
+- Added `FitActivityParser` using `fitparse` to parse FIT activity payloads.
+- Normalized distance, duration, pace, heart rate, cadence, elevation,
+  training effect, laps, samples, speed, power, and GPS coordinates into
+  canonical metric values.
+- Handled missing optional fields safely while requiring enough start time,
+  duration, and distance data to create a valid activity.
+- Added stable malformed-file errors through `FitActivityParseError`.
+
+Validation:
+
+- Added generated valid FIT fixture coverage for parser extraction.
+- Added parser tests for missing optional fields and malformed FIT bytes.
+- Ran targeted backend tests successfully:
+  `uv run pytest tests/test_phase6_fit_parser.py tests/test_phase6_import_service.py tests/test_phase6_api.py tests/test_phase6_sync_imports.py tests/test_phase4_services.py tests/test_phase4_api.py`.
+
+### P6-003: Implement Activity Import Service
+
+Status: Done
+
+Implemented:
+
+- Persisted parsed activities, laps, samples, and raw import metadata through
+  `ActivityImportService`.
+- Added duplicate activity detection by source activity id, raw checksum, and
+  fallback start-time/duration/distance signature.
+- Kept each file import transactionally consistent in SQLite and removed the
+  retained raw file if the corresponding DB write fails.
+- Reported created activity counts back into manual sync runs.
+
+Validation:
+
+- Added SQLite integration tests for successful import, duplicate activity
+  skipping, duplicate raw skipping, and rollback on failed activity persistence.
+- Added direct sync import tests verifying activity counts in sync history.
+- Ran targeted backend tests successfully:
+  `uv run pytest tests/test_phase6_fit_parser.py tests/test_phase6_import_service.py tests/test_phase6_api.py tests/test_phase6_sync_imports.py tests/test_phase4_services.py tests/test_phase4_api.py`.
+
+### P6-004: Add Folder Import Bootstrap
+
+Status: Done
+
+Implemented:
+
+- Added `POST /api/imports/fit-folder` for local historical FIT folder import.
+- Added `uv run python -m runstats.importers.fit_folder` for command-line
+  folder imports.
+- Returned folder import summaries with created, skipped, failed, archived
+  counts, and per-file statuses.
+- Kept folder import independent from direct watch export capability so it works
+  for watches that only support folder-based import.
+- Documented the API and command in `backend/README.md`.
+
+Validation:
+
+- Added service tests with generated FIT fixture files.
+- Added API integration tests for successful folder import, failed malformed
+  files, missing folder errors, and rendering imported activities through
+  `GET /api/activities`.
+- Ran targeted backend tests successfully:
+  `uv run pytest tests/test_phase6_fit_parser.py tests/test_phase6_import_service.py tests/test_phase6_api.py tests/test_phase6_sync_imports.py tests/test_phase4_services.py tests/test_phase4_api.py`.
+
+### P6-005: Connect Verified Direct Activity Export
+
+Status: Done
+
+Implemented:
+
+- Updated manual sync to call direct activity export only when stored device
+  capabilities confirm BLE activity export support.
+- Routed direct provider exports through the same raw archive and activity
+  import service used by folder import.
+- Returned a clear failed sync event and sync-history error summary when direct
+  activity export is unsupported.
+- Kept Garmin-specific export details behind `WatchProvider`; the importer only
+  receives raw activity payloads.
+
+Validation:
+
+- Added sync integration tests with fake supported direct export payloads.
+- Added sync integration tests for unsupported direct export and clear
+  folder-import messaging.
+- Ran targeted backend tests successfully:
+  `uv run pytest tests/test_phase6_fit_parser.py tests/test_phase6_import_service.py tests/test_phase6_api.py tests/test_phase6_sync_imports.py tests/test_phase4_services.py tests/test_phase4_api.py`.

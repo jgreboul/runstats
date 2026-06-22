@@ -9,7 +9,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from runstats.api.errors import RunStatsError
-from runstats.bluetooth import FakeWatchProvider
+from runstats.bluetooth import FakeWatchProvider, WatchProvider, WatchProviderError
+from runstats.config import Settings, get_settings
 from runstats.db.models import Device, SyncRun
 from runstats.schemas import (
     ManualSyncRequest,
@@ -17,6 +18,7 @@ from runstats.schemas import (
     SyncRunListResponse,
     SyncRunResponse,
 )
+from runstats.services.import_service import ActivityImportService
 
 SAFE_ERROR_MAX_LENGTH = 240
 
@@ -55,10 +57,12 @@ class SyncService:
     def __init__(
         self,
         session: Session,
-        provider: FakeWatchProvider | None = None,
+        provider: WatchProvider | None = None,
+        runtime_settings: Settings | None = None,
     ) -> None:
         self.session = session
         self.provider = provider or FakeWatchProvider()
+        self.runtime_settings = runtime_settings or get_settings()
 
     def start_manual_sync(
         self,
@@ -89,7 +93,7 @@ class SyncService:
         self.session.add(run)
         self.session.commit()
         self.session.refresh(run)
-        progress_store.set_plan(run.id, self._build_fake_plan(run.id, device, request))
+        progress_store.set_plan(run.id, self._build_sync_plan(run.id, device, request))
         return _sync_run_response(run)
 
     def finalize_manual_sync(
@@ -203,7 +207,7 @@ class SyncService:
             percent=100,
         )
 
-    def _build_fake_plan(
+    def _build_sync_plan(
         self,
         sync_run_id: str,
         device: Device,
@@ -247,19 +251,95 @@ class SyncService:
                 error_message=message,
             )
 
-        activities_imported = 2 if include_activities else 0
+        activities_imported = 0
         health_records_imported = 5 if include_health else 0
 
         if include_activities:
+            if (
+                device.capabilities is None
+                or not device.capabilities.supports_ble_activity_export
+            ):
+                message = (
+                    "Direct activity export is unavailable for this watch. "
+                    "Use folder-based FIT import for activity history."
+                )
+                events.append(
+                    SyncProgressEvent(
+                        sync_run_id=sync_run_id,
+                        type="failed",
+                        stage="activity_export_unavailable",
+                        message=message,
+                        percent=100,
+                    )
+                )
+                return SyncRunPlan(
+                    events=events,
+                    final_status="failed",
+                    activities_imported=0,
+                    health_records_imported=0,
+                    error_message=message,
+                )
+
             events.append(
                 SyncProgressEvent(
                     sync_run_id=sync_run_id,
                     type="progress",
                     stage="importing_activities",
-                    message="Mock imported 2 activity summaries.",
+                    message="Importing activity exports from watch.",
                     percent=55,
                 )
             )
+            try:
+                payloads = self.provider.export_activities(device.bluetooth_address)
+            except WatchProviderError as exc:
+                message = safe_error_summary(exc.message) or "Activity export failed."
+                events.append(
+                    SyncProgressEvent(
+                        sync_run_id=sync_run_id,
+                        type="failed",
+                        stage="failed",
+                        message=message,
+                        percent=100,
+                    )
+                )
+                return SyncRunPlan(
+                    events=events,
+                    final_status="failed",
+                    activities_imported=0,
+                    health_records_imported=0,
+                    error_message=message,
+                )
+
+            summary = ActivityImportService(
+                self.session,
+                self.runtime_settings,
+            ).import_watch_activity_exports(
+                device_id=device.id,
+                payloads=payloads,
+            )
+            activities_imported = summary.created
+            if summary.failed > 0:
+                message = (
+                    "One or more direct activity exports could not be imported. "
+                    f"Created {summary.created}, skipped {summary.skipped}, "
+                    f"failed {summary.failed}."
+                )
+                events.append(
+                    SyncProgressEvent(
+                        sync_run_id=sync_run_id,
+                        type="failed",
+                        stage="failed",
+                        message=message,
+                        percent=100,
+                    )
+                )
+                return SyncRunPlan(
+                    events=events,
+                    final_status="failed",
+                    activities_imported=activities_imported,
+                    health_records_imported=0,
+                    error_message=message,
+                )
         if include_health:
             events.append(
                 SyncProgressEvent(

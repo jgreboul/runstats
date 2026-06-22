@@ -152,7 +152,11 @@ def test_sync_service_runs_successful_and_failed_fake_lifecycles(
 
         sync_service = SyncService(session)
         running = sync_service.start_manual_sync(
-            ManualSyncRequest(device_id=online.id),
+            ManualSyncRequest(
+                device_id=online.id,
+                include_activities=False,
+                include_health=True,
+            ),
             progress_store,
         )
         plan = progress_store.get_plan(running.id)
@@ -169,11 +173,10 @@ def test_sync_service_runs_successful_and_failed_fake_lifecycles(
 
     assert running.status == "running"
     assert completed.status == "succeeded"
-    assert completed.activities_imported == 2
+    assert completed.activities_imported == 0
     assert completed.health_records_imported == 5
     assert [event.stage for event in plan.events] == [
         "connecting",
-        "importing_activities",
         "importing_health",
         "completed",
     ]

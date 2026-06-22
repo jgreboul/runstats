@@ -112,27 +112,26 @@ def test_sync_api_starts_manual_sync_and_streams_progress(tmp_path: Path) -> Non
             "/api/sync-runs",
             json={
                 "device_id": device_id,
-                "include_activities": True,
+                "include_activities": False,
                 "include_health": True,
             },
         )
         sync_run_id = created.json()["id"]
         with client.websocket_connect(f"/api/sync-runs/{sync_run_id}/events") as ws:
-            events = [ws.receive_json() for _ in range(4)]
+            events = [ws.receive_json() for _ in range(3)]
         detail = client.get(f"/api/sync-runs/{sync_run_id}")
 
     assert created.status_code == 201
     assert created.json()["status"] == "running"
     assert [event["stage"] for event in events] == [
         "connecting",
-        "importing_activities",
         "importing_health",
         "completed",
     ]
     assert events[-1]["type"] == "completed"
     assert detail.status_code == 200
     assert detail.json()["status"] == "succeeded"
-    assert detail.json()["activities_imported"] == 2
+    assert detail.json()["activities_imported"] == 0
     assert detail.json()["health_records_imported"] == 5
 
 

@@ -35,6 +35,7 @@ GET /api/sync-runs
 GET /api/sync-runs/{sync_run_id}
 GET /api/settings
 PATCH /api/settings
+POST /api/imports/fit-folder
 POST /api/devices/scan
 POST /api/devices/pair
 GET /api/devices
@@ -88,6 +89,31 @@ Use a temporary or alternate database path:
 ```bash
 uv run python -m runstats.db.seed --database-path ../data/dev.sqlite3
 ```
+
+## Import Historical FIT Files
+
+Import a folder through the API:
+
+```text
+POST /api/imports/fit-folder
+```
+
+```json
+{
+  "device_id": "device-uuid",
+  "folder_path": "D:/Garmin/Activities",
+  "recursive": true
+}
+```
+
+Import the same folder from the command line:
+
+```bash
+uv run python -m runstats.importers.fit_folder --device-id device-uuid --folder-path "D:/Garmin/Activities"
+```
+
+Use `--database-path` and `--raw-archive-path` to target alternate local data
+locations.
 
 ## Validate
 

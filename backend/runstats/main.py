@@ -12,6 +12,7 @@ from runstats.api.devices import router as devices_router
 from runstats.api.errors import register_error_handlers
 from runstats.api.health import router as health_router
 from runstats.api.healthcheck import router as healthcheck_router
+from runstats.api.imports import router as imports_router
 from runstats.api.settings import router as settings_router
 from runstats.api.sync import router as sync_router
 from runstats.bluetooth import WatchProvider, create_watch_provider
@@ -55,6 +56,7 @@ def create_app(
     app.include_router(devices_router, prefix="/api")
     app.include_router(health_router, prefix="/api")
     app.include_router(healthcheck_router, prefix="/api")
+    app.include_router(imports_router, prefix="/api")
     app.include_router(settings_router, prefix="/api")
     app.include_router(sync_router, prefix="/api")
     return app
