@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   CartesianGrid,
   Line,
@@ -43,10 +44,16 @@ const knownMetricOptions = [
 ];
 
 export function HealthView() {
-  const [metricType, setMetricType] = useState("steps");
+  const [searchParams] = useSearchParams();
+  const requestedMetric = searchParams.get("metric") ?? "steps";
+  const [metricType, setMetricType] = useState(requestedMetric);
   const [bucket, setBucket] = useState<HealthSeriesBucketName>("day");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+
+  useEffect(() => {
+    setMetricType(requestedMetric);
+  }, [requestedMetric]);
 
   const metrics = useQuery({
     queryKey: queryKeys.health.metrics,

@@ -2,8 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   ApiError,
+  askChatQuestion,
+  createChatSession,
+  deleteChatHistory,
   getActivity,
+  getChatSession,
   getDeviceCapabilities,
+  listChatSessions,
   listActivities,
   normalizeApiError,
   probeDeviceCapabilities,
@@ -89,6 +94,55 @@ describe("RunStats API client", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("reads and mutates chat resources", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input), "http://localhost");
+
+      if (url.pathname === "/api/chat/sessions" && init?.method === "POST") {
+        expect(JSON.parse(String(init?.body))).toEqual({ title: "New chat" });
+        return jsonResponse(chatSession([]));
+      }
+
+      if (url.pathname === "/api/chat/sessions" && init?.method === "DELETE") {
+        return new Response(null, { status: 204 });
+      }
+
+      if (url.pathname === "/api/chat/sessions") {
+        expect(url.searchParams.get("limit")).toBe("5");
+        return jsonResponse({ items: [], limit: 5, offset: 0, total: 0 });
+      }
+
+      if (url.pathname === "/api/chat/sessions/session-1/messages") {
+        expect(init?.method).toBe("POST");
+        expect(JSON.parse(String(init?.body))).toEqual({ message: "Longest run?" });
+        return jsonResponse({
+          answer: "Longest run: Sunday Long Run.",
+          message_id: "assistant-1",
+          supporting_data: supportingData,
+        });
+      }
+
+      expect(url.pathname).toBe("/api/chat/sessions/session-1");
+      return jsonResponse(chatSession([]));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(createChatSession("New chat")).resolves.toMatchObject({
+      id: "session-1",
+    });
+    await expect(listChatSessions({ limit: 5 })).resolves.toMatchObject({
+      total: 0,
+    });
+    await expect(getChatSession("session-1")).resolves.toMatchObject({
+      id: "session-1",
+    });
+    await expect(askChatQuestion("session-1", "Longest run?")).resolves.toMatchObject({
+      supporting_data: { intent: "longest_run" },
+    });
+    await expect(deleteChatHistory()).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+  });
+
   it("normalizes structured backend errors", async () => {
     vi.stubGlobal(
       "fetch",
@@ -152,6 +206,11 @@ describe("RunStats API client", () => {
       "capabilities",
       "device-1",
     ]);
+    expect(queryKeys.chat.detail("session-1")).toEqual([
+      "chat",
+      "detail",
+      "session-1",
+    ]);
   });
 });
 
@@ -160,4 +219,24 @@ function jsonResponse(body: unknown, status = 200) {
     headers: { "Content-Type": "application/json" },
     status,
   });
+}
+
+const supportingData = {
+  intent: "longest_run",
+  metrics: ["running_distance"],
+  notes: [],
+  references: [],
+  row_count: 1,
+  time_range: null,
+  tool_names: ["longest_run"],
+};
+
+function chatSession(messages: unknown[]) {
+  return {
+    created_at: "2026-06-15T10:00:00Z",
+    id: "session-1",
+    messages,
+    title: "New chat",
+    updated_at: "2026-06-15T10:00:00Z",
+  };
 }

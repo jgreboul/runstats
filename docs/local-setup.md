@@ -139,12 +139,13 @@ Useful first checks:
 2. Open Activities and click a seeded activity.
 3. Open Health and switch between available metrics.
 4. Open Sync History and confirm seeded sync runs load.
-5. Open Watch Settings.
-6. Click Scan.
-7. Pair a fake Forerunner watch.
-8. Click Test connection.
-9. Click Probe capabilities.
-10. Start a manual sync.
+5. Open Chat Assistant and ask a seeded-data question.
+6. Open Watch Settings.
+7. Click Scan.
+8. Pair a fake Forerunner watch.
+9. Click Test connection.
+10. Click Probe capabilities.
+11. Start a manual sync.
 
 If you are using the real Bleak provider, scan results depend on nearby BLE
 devices, Bluetooth permissions, and whether a supported Garmin watch is
@@ -158,6 +159,8 @@ Set these only when needed:
 $env:RUNSTATS_DATABASE_PATH="D:\MYDOCS\MyGitHub\runstats\data\dev.sqlite3"
 $env:RUNSTATS_RAW_ARCHIVE_PATH="D:\MYDOCS\MyGitHub\runstats\data\archive\raw-imports"
 $env:RUNSTATS_WATCH_PROVIDER="fake"
+$env:RUNSTATS_LOCAL_CHAT_BASE_URL="http://127.0.0.1:11434"
+$env:RUNSTATS_LOCAL_CHAT_MODEL="llama3.2"
 ```
 
 For macOS or Linux shells:
@@ -166,7 +169,13 @@ For macOS or Linux shells:
 export RUNSTATS_DATABASE_PATH="$PWD/data/dev.sqlite3"
 export RUNSTATS_RAW_ARCHIVE_PATH="$PWD/data/archive/raw-imports"
 export RUNSTATS_WATCH_PROVIDER=fake
+export RUNSTATS_LOCAL_CHAT_BASE_URL="http://127.0.0.1:11434"
+export RUNSTATS_LOCAL_CHAT_MODEL="llama3.2"
 ```
+
+The Chat Assistant uses an Ollama-compatible local model by default. If no
+local model is running, chat answer requests return `CHAT_MODEL_UNAVAILABLE`;
+the rest of the app continues to work. See `docs/chat-assistant.md`.
 
 Frontend API requests normally work through the Vite proxy. Set
 `VITE_RUNSTATS_API_BASE_URL` only when the frontend is served from an origin
@@ -233,6 +242,15 @@ If Watch Settings scan fails:
 - For real Bluetooth, confirm Bluetooth is enabled and the operating system has
   granted local device permissions.
 - Keep the watch nearby and make sure it is advertising or discoverable.
+
+If Chat Assistant answers fail:
+
+- Confirm a local Ollama-compatible service is running if chat is configured
+  with the default local provider.
+- Confirm `RUNSTATS_LOCAL_CHAT_BASE_URL` and `RUNSTATS_LOCAL_CHAT_MODEL` match
+  your local model runtime.
+- The backend error code `CHAT_MODEL_UNAVAILABLE` means RunStats could query
+  local data but could not reach the configured chat model.
 
 If a port is already in use:
 

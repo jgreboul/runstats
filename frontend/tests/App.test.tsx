@@ -35,6 +35,7 @@ function renderApp(initialPath = "/") {
 
 describe("App", () => {
   beforeEach(() => {
+    resetChatState();
     vi.stubGlobal("fetch", vi.fn(mockFetch));
   });
 
@@ -118,9 +119,27 @@ describe("App", () => {
       screen.getByText("Seeded Bluetooth export unavailable; folder import required."),
     ).toBeInTheDocument();
   });
+
+  it("renders chat history and sends a grounded question", async () => {
+    renderApp("/chat");
+
+    expect(await screen.findByText("Seed training questions")).toBeInTheDocument();
+    expect(screen.getByText("The seeded data contains 25.22 km.")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Message"), {
+      target: { value: "Show my longest run with heart-rate details." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(await screen.findAllByText("Longest run: Sunday Long Run.")).toHaveLength(2);
+    expect(screen.getByRole("link", { name: "Sunday Long Run" })).toHaveAttribute(
+      "href",
+      "/activities/seed-activity-003",
+    );
+  });
 });
 
-async function mockFetch(input: RequestInfo | URL) {
+async function mockFetch(input: RequestInfo | URL, init?: RequestInit) {
   const url = new URL(String(input), "http://localhost");
 
   if (url.pathname === "/api/activities/summary") {
@@ -242,6 +261,91 @@ async function mockFetch(input: RequestInfo | URL) {
 
   if (url.pathname === "/api/sync-runs/seed-sync-002") {
     return jsonResponse(syncRuns[1]);
+  }
+
+  if (url.pathname === "/api/chat/sessions" && init?.method === "POST") {
+    const session = {
+      created_at: "2026-06-15T12:00:00Z",
+      id: "created-chat-session",
+      messages: [],
+      title: "New chat",
+      updated_at: "2026-06-15T12:00:00Z",
+    };
+    chatSessions = [sessionListItem(session), ...chatSessions];
+    chatMessagesBySession.set(session.id, []);
+    return jsonResponse(session);
+  }
+
+  if (url.pathname === "/api/chat/sessions" && init?.method === "DELETE") {
+    chatSessions = [];
+    chatMessagesBySession.clear();
+    return new Response(null, { status: 204 });
+  }
+
+  if (url.pathname === "/api/chat/sessions") {
+    return jsonResponse({
+      items: chatSessions,
+      limit: Number(url.searchParams.get("limit") ?? 20),
+      offset: Number(url.searchParams.get("offset") ?? 0),
+      total: chatSessions.length,
+    });
+  }
+
+  const chatMessageMatch = url.pathname.match(
+    /^\/api\/chat\/sessions\/([^/]+)\/messages$/,
+  );
+  if (chatMessageMatch && init?.method === "POST") {
+    const sessionId = chatMessageMatch[1];
+    const body = JSON.parse(String(init?.body)) as { message: string };
+    const messages = chatMessagesBySession.get(sessionId) ?? [];
+    messages.push({
+      content: body.message,
+      created_at: "2026-06-15T12:01:00Z",
+      id: "chat-user-new",
+      role: "user",
+      session_id: sessionId,
+      tool_trace: null,
+    });
+    messages.push({
+      content: "Longest run: Sunday Long Run.",
+      created_at: "2026-06-15T12:01:10Z",
+      id: "chat-assistant-new",
+      role: "assistant",
+      session_id: sessionId,
+      tool_trace: chatSupportingData,
+    });
+    chatMessagesBySession.set(sessionId, messages);
+    chatSessions = chatSessions.map((session) =>
+      session.id === sessionId
+        ? {
+            ...session,
+            last_message_preview: "Longest run: Sunday Long Run.",
+            message_count: messages.length,
+            updated_at: "2026-06-15T12:01:10Z",
+          }
+        : session,
+    );
+    return jsonResponse({
+      answer: "Longest run: Sunday Long Run.",
+      message_id: "chat-assistant-new",
+      supporting_data: chatSupportingData,
+    });
+  }
+
+  const chatSessionMatch = url.pathname.match(/^\/api\/chat\/sessions\/([^/]+)$/);
+  if (chatSessionMatch) {
+    const sessionId = chatSessionMatch[1];
+    const session = chatSessions.find((item) => item.id === sessionId);
+    if (!session) {
+      return jsonResponse({ error: { code: "CHAT_SESSION_NOT_FOUND" } }, 404);
+    }
+    return jsonResponse({
+      created_at: session.created_at,
+      id: session.id,
+      messages: chatMessagesBySession.get(session.id) ?? [],
+      title: session.title,
+      updated_at: session.updated_at,
+    });
   }
 
   return jsonResponse(
@@ -471,3 +575,80 @@ const syncRuns = [
     status: "failed",
   },
 ];
+
+let chatSessions: ReturnType<typeof sessionListItem>[] = [];
+let chatMessagesBySession = new Map<string, unknown[]>();
+
+const chatSupportingData = {
+  intent: "combined",
+  metrics: ["running_distance", "heart_rate"],
+  notes: [],
+  references: [
+    {
+      href: "/activities/seed-activity-003",
+      id: "seed-activity-003",
+      label: "Sunday Long Run",
+      type: "activity",
+    },
+  ],
+  row_count: 2,
+  time_range: "2026-06-15 to 2026-06-15",
+  tool_names: ["longest_run", "activity_detail_lookup"],
+};
+
+function resetChatState() {
+  const seedSession = {
+    created_at: "2026-06-15T10:00:00Z",
+    id: "seed-chat-session",
+    messages: [
+      {
+        content: "How much did I run in the seeded data?",
+        created_at: "2026-06-15T10:00:00Z",
+        id: "chat-user-1",
+        role: "user",
+        session_id: "seed-chat-session",
+        tool_trace: null,
+      },
+      {
+        content: "The seeded data contains 25.22 km.",
+        created_at: "2026-06-15T10:01:00Z",
+        id: "chat-assistant-1",
+        role: "assistant",
+        session_id: "seed-chat-session",
+        tool_trace: {
+          intent: "weekly_running_summary",
+          metrics: ["running_distance"],
+          notes: [],
+          references: [],
+          row_count: 3,
+          time_range: null,
+          tool_names: ["weekly_running_summary"],
+        },
+      },
+    ],
+    title: "Seed training questions",
+    updated_at: "2026-06-15T10:01:00Z",
+  };
+  chatSessions = [sessionListItem(seedSession)];
+  chatMessagesBySession = new Map([[seedSession.id, seedSession.messages]]);
+}
+
+function sessionListItem(session: {
+  created_at: string;
+  id: string;
+  messages: unknown[];
+  title: string;
+  updated_at: string;
+}) {
+  const lastMessage = session.messages[session.messages.length - 1] as
+    | { content?: string }
+    | undefined;
+  return {
+    created_at: session.created_at,
+    id: session.id,
+    last_message_preview: lastMessage?.content ?? null,
+    message_count: session.messages.length,
+    title: session.title,
+    updated_at: session.updated_at,
+  };
+}

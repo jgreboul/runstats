@@ -19,6 +19,8 @@ ChatRetentionPolicy = Literal[
     "retain_90_days",
     "do_not_retain",
 ]
+ChatMessageRole = Literal["user", "assistant", "system", "tool"]
+ChatReferenceType = Literal["activity", "health_metric", "sync_run", "chart"]
 
 
 class SerializableModel(BaseModel):
@@ -500,3 +502,99 @@ class HealthMetricComparisonResult(SerializableModel):
     comparison: HealthComparisonWindow
     delta_value: float | None
     percent_change: float | None
+
+
+class ChatReference(SerializableModel):
+    """Linkable source referenced by a chatbot answer."""
+
+    type: ChatReferenceType
+    id: str
+    label: str
+    href: str
+
+
+class ChatSupportingData(SerializableModel):
+    """Lightweight tool trace metadata returned with chatbot answers."""
+
+    intent: str
+    tool_names: list[str]
+    time_range: str | None
+    metrics: list[str]
+    row_count: int
+    references: list[ChatReference]
+    notes: list[str]
+
+
+class ChatToolResult(SerializableModel):
+    """Typed read-only tool output summarized for a chat provider."""
+
+    tool_name: str
+    intent: str
+    summary: str
+    row_count: int
+    time_range: str | None
+    metrics: list[str]
+    references: list[ChatReference]
+    notes: list[str]
+    data: dict[str, object] = Field(default_factory=dict)
+
+
+class ChatSessionCreateRequest(SerializableModel):
+    """Request body for creating a chat session."""
+
+    title: str | None = Field(default=None, min_length=1, max_length=120)
+
+
+class ChatQuestionRequest(SerializableModel):
+    """Request body for asking the chat assistant a question."""
+
+    message: str = Field(min_length=1, max_length=1000)
+
+
+class ChatMessageResponse(SerializableModel):
+    """Persisted chat message."""
+
+    id: str
+    session_id: str
+    role: ChatMessageRole
+    content: str
+    tool_trace: ChatSupportingData | None
+    created_at: datetime
+
+
+class ChatSessionListItem(SerializableModel):
+    """Compact chat session list row."""
+
+    id: str
+    title: str | None
+    created_at: datetime
+    updated_at: datetime
+    message_count: int
+    last_message_preview: str | None
+
+
+class ChatSessionListResponse(SerializableModel):
+    """Recent chat sessions."""
+
+    items: list[ChatSessionListItem]
+    total: int
+    limit: int
+    offset: int
+
+
+class ChatSessionResponse(SerializableModel):
+    """Chat session with ordered messages."""
+
+    id: str
+    title: str | None
+    created_at: datetime
+    updated_at: datetime
+    messages: list[ChatMessageResponse]
+
+
+class ChatAnswerResponse(SerializableModel):
+    """Assistant response to a user question."""
+
+    message_id: str
+    answer: str
+    supporting_data: ChatSupportingData

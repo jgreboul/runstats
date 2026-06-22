@@ -5,6 +5,8 @@ const apiBaseUrl = import.meta.env.VITE_RUNSTATS_API_BASE_URL ?? "";
 export type ActivitySummaryBucketName = "day" | "week" | "month" | "year";
 export type HealthSeriesBucketName = "day" | "week" | "month";
 export type PreferredUnits = "metric" | "imperial";
+export type ChatMessageRole = "user" | "assistant" | "system" | "tool";
+export type ChatReferenceType = "activity" | "health_metric" | "sync_run" | "chart";
 
 export interface ApiErrorBody {
   error?: {
@@ -193,6 +195,62 @@ export interface SyncRunListResponse {
   offset: number;
 }
 
+export interface ChatReference {
+  type: ChatReferenceType;
+  id: string;
+  label: string;
+  href: string;
+}
+
+export interface ChatSupportingData {
+  intent: string;
+  tool_names: string[];
+  time_range: string | null;
+  metrics: string[];
+  row_count: number;
+  references: ChatReference[];
+  notes: string[];
+}
+
+export interface ChatMessage {
+  id: string;
+  session_id: string;
+  role: ChatMessageRole;
+  content: string;
+  tool_trace: ChatSupportingData | null;
+  created_at: string;
+}
+
+export interface ChatSessionListItem {
+  id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+  last_message_preview: string | null;
+}
+
+export interface ChatSessionListResponse {
+  items: ChatSessionListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface ChatSession {
+  id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+  messages: ChatMessage[];
+}
+
+export interface ChatAnswerResponse {
+  message_id: string;
+  answer: string;
+  supporting_data: ChatSupportingData;
+}
+
 export interface DiscoveredWatch {
   id: string;
   name: string;
@@ -317,6 +375,11 @@ export interface SyncRunListParams {
   offset?: number;
 }
 
+export interface ChatSessionListParams {
+  limit?: number;
+  offset?: number;
+}
+
 // Query key factories stay explicit so cache invalidation can target the
 // resource and parameter set without relying on stringly-typed route names.
 export const queryKeys = {
@@ -342,6 +405,12 @@ export const queryKeys = {
     detail: (syncRunId: string) => ["sync-runs", "detail", syncRunId] as const,
     list: (params: SyncRunListParams = {}) =>
       ["sync-runs", "list", normalizeSyncRunListParams(params)] as const,
+  },
+  chat: {
+    all: ["chat"] as const,
+    detail: (sessionId: string) => ["chat", "detail", sessionId] as const,
+    list: (params: ChatSessionListParams = {}) =>
+      ["chat", "list", normalizeChatSessionListParams(params)] as const,
   },
   devices: {
     all: ["devices"] as const,
@@ -403,6 +472,50 @@ export async function listSyncRuns(
 
 export async function getSyncRun(syncRunId: string): Promise<SyncRun> {
   return requestJson<SyncRun>(`/api/sync-runs/${syncRunId}`);
+}
+
+export async function createChatSession(
+  title?: string | null,
+): Promise<ChatSession> {
+  return requestJson<ChatSession>("/api/chat/sessions", {
+    body: JSON.stringify({ title: title ?? null }),
+    method: "POST",
+  });
+}
+
+export async function listChatSessions(
+  params: ChatSessionListParams = {},
+): Promise<ChatSessionListResponse> {
+  return requestJson<ChatSessionListResponse>(
+    withQuery("/api/chat/sessions", normalizeChatSessionListParams(params)),
+  );
+}
+
+export async function getChatSession(sessionId: string): Promise<ChatSession> {
+  return requestJson<ChatSession>(`/api/chat/sessions/${sessionId}`);
+}
+
+export async function askChatQuestion(
+  sessionId: string,
+  message: string,
+): Promise<ChatAnswerResponse> {
+  return requestJson<ChatAnswerResponse>(
+    `/api/chat/sessions/${sessionId}/messages`,
+    {
+      body: JSON.stringify({ message }),
+      method: "POST",
+    },
+  );
+}
+
+export async function deleteChatSession(sessionId: string): Promise<void> {
+  await requestJson<void>(`/api/chat/sessions/${sessionId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function deleteChatHistory(): Promise<void> {
+  await requestJson<void>("/api/chat/sessions", { method: "DELETE" });
 }
 
 export async function scanDevices(
@@ -619,6 +732,13 @@ function normalizeSyncRunListParams(params: SyncRunListParams) {
   return {
     device_id: params.device_id ?? null,
     status: params.status ?? null,
+    limit: params.limit ?? 20,
+    offset: params.offset ?? 0,
+  };
+}
+
+function normalizeChatSessionListParams(params: ChatSessionListParams) {
+  return {
     limit: params.limit ?? 20,
     offset: params.offset ?? 0,
   };

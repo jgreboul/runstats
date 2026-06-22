@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from runstats.api.activities import router as activities_router
+from runstats.api.chat import router as chat_router
 from runstats.api.devices import router as devices_router
 from runstats.api.errors import register_error_handlers
 from runstats.api.health import router as health_router
@@ -16,6 +17,7 @@ from runstats.api.imports import router as imports_router
 from runstats.api.settings import router as settings_router
 from runstats.api.sync import router as sync_router
 from runstats.bluetooth import WatchProvider, create_watch_provider
+from runstats.chat import ChatResponseProvider
 from runstats.config import Settings, get_settings
 from runstats.db.session import create_session_factory, create_sqlite_engine
 from runstats.services.sync_service import SyncProgressStore
@@ -24,6 +26,7 @@ from runstats.services.sync_service import SyncProgressStore
 def create_app(
     settings: Settings | None = None,
     watch_provider: WatchProvider | None = None,
+    chat_response_provider: ChatResponseProvider | None = None,
 ) -> FastAPI:
     """Create and configure the RunStats FastAPI application."""
 
@@ -41,6 +44,7 @@ def create_app(
         app_instance.state.session_factory = session_factory
         app_instance.state.sync_progress_store = SyncProgressStore()
         app_instance.state.watch_provider = resolved_watch_provider
+        app_instance.state.chat_response_provider = chat_response_provider
         yield
         engine.dispose()
 
@@ -50,9 +54,11 @@ def create_app(
     app.state.session_factory = session_factory
     app.state.sync_progress_store = SyncProgressStore()
     app.state.watch_provider = resolved_watch_provider
+    app.state.chat_response_provider = chat_response_provider
 
     register_error_handlers(app)
     app.include_router(activities_router, prefix="/api")
+    app.include_router(chat_router, prefix="/api")
     app.include_router(devices_router, prefix="/api")
     app.include_router(health_router, prefix="/api")
     app.include_router(healthcheck_router, prefix="/api")

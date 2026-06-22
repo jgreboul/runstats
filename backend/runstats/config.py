@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     database_path: Path = Field(default_factory=default_database_path)
     raw_archive_path: Path = Field(default_factory=default_raw_archive_path)
     watch_provider: WatchProviderName = "bleak"
+    local_chat_base_url: str = "http://127.0.0.1:11434"
+    local_chat_model: str = "llama3.2"
+    local_chat_timeout_seconds: float = Field(default=20.0, gt=0)
 
     @property
     def database_url(self) -> str:

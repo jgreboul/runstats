@@ -2,6 +2,7 @@ import { NavLink, Route, Routes } from "react-router-dom";
 
 import "./App.css";
 import { ActivitiesView, ActivityDetailView } from "./views/ActivitiesView";
+import { ChatAssistantView } from "./views/ChatAssistantView";
 import { DashboardView } from "./views/DashboardView";
 import { HealthView } from "./views/HealthView";
 import { SyncHistoryView, SyncRunDetailView } from "./views/SyncHistoryView";
@@ -15,15 +16,6 @@ const navigationItems = [
   { label: "Watch Settings", path: "/watch" },
   { label: "Sync History", path: "/sync-history" },
 ];
-
-function UpcomingView({ phase, title }: { phase: string; title: string }) {
-  return (
-    <section className="state-panel state-panel-empty">
-      <h2>{title}</h2>
-      <p>{phase}</p>
-    </section>
-  );
-}
 
 function NotFoundView() {
   return (
@@ -64,10 +56,7 @@ export default function App() {
           <Route path="/activities" element={<ActivitiesView />} />
           <Route path="/activities/:activityId" element={<ActivityDetailView />} />
           <Route path="/health" element={<HealthView />} />
-          <Route
-            path="/chat"
-            element={<UpcomingView phase="Planned for Phase 8" title="Chat Assistant" />}
-          />
+          <Route path="/chat" element={<ChatAssistantView />} />
           <Route
             path="/watch"
             element={<WatchSettingsView />}
