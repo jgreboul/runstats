@@ -4,11 +4,12 @@ RunStats is a local-first Python and React application for importing Garmin
 running activities and health stats, storing them in SQLite, visualizing them in
 a React UI, and asking grounded chatbot questions about the local data.
 
-The current repository includes the Phase 5 experience from
+The current repository includes the Phase 7 experience from
 `runstats-product-backlog.md`: FastAPI query APIs, SQLite persistence,
 deterministic seed data, a React app shell, typed frontend API client,
 dashboard, activity browsing and details, health trends, sync history, watch
-settings, Bluetooth discovery through Bleak, and device capability probing.
+settings, Bluetooth discovery through Bleak, device capability probing, FIT
+activity import, and normalized health payload import.
 
 ## Repository Layout
 

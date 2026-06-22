@@ -365,6 +365,46 @@ class FitFolderImportResponse(SerializableModel):
     files: list[ImportedActivityFileResult]
 
 
+class HealthPayloadImportRequest(SerializableModel):
+    """Request body for importing a local JSON health payload fixture."""
+
+    device_id: str
+    file_path: str = Field(min_length=1, max_length=1000)
+
+
+class ImportedHealthWarning(SerializableModel):
+    """Non-fatal warning from a health payload import."""
+
+    source_id: str
+    message: str
+    record_index: int | None
+    metric_type: str | None
+
+
+class ImportedHealthPayloadResult(SerializableModel):
+    """Per-payload result from a health import run."""
+
+    source_id: str
+    status: Literal["created", "skipped", "failed"]
+    message: str
+    sha256: str | None
+    raw_import_id: str | None
+    archived: bool
+    records_created: int
+    records_skipped: int
+    warnings: list[ImportedHealthWarning]
+
+
+class HealthPayloadImportResponse(SerializableModel):
+    """Summary from a local health payload import."""
+
+    records_created: int
+    records_skipped: int
+    payloads_failed: int
+    raw_files_archived: int
+    payloads: list[ImportedHealthPayloadResult]
+
+
 class AppSettingsResponse(SerializableModel):
     """Local application settings."""
 

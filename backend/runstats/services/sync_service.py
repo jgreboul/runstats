@@ -18,6 +18,7 @@ from runstats.schemas import (
     SyncRunListResponse,
     SyncRunResponse,
 )
+from runstats.services.health_import_service import HealthImportService
 from runstats.services.import_service import ActivityImportService
 
 SAFE_ERROR_MAX_LENGTH = 240
@@ -252,7 +253,7 @@ class SyncService:
             )
 
         activities_imported = 0
-        health_records_imported = 5 if include_health else 0
+        health_records_imported = 0
 
         if include_activities:
             if (
@@ -310,19 +311,19 @@ class SyncService:
                     error_message=message,
                 )
 
-            summary = ActivityImportService(
+            activity_summary = ActivityImportService(
                 self.session,
                 self.runtime_settings,
             ).import_watch_activity_exports(
                 device_id=device.id,
                 payloads=payloads,
             )
-            activities_imported = summary.created
-            if summary.failed > 0:
+            activities_imported = activity_summary.created
+            if activity_summary.failed > 0:
                 message = (
                     "One or more direct activity exports could not be imported. "
-                    f"Created {summary.created}, skipped {summary.skipped}, "
-                    f"failed {summary.failed}."
+                    f"Created {activity_summary.created}, skipped "
+                    f"{activity_summary.skipped}, failed {activity_summary.failed}."
                 )
                 events.append(
                     SyncProgressEvent(
@@ -341,22 +342,100 @@ class SyncService:
                     error_message=message,
                 )
         if include_health:
+            if (
+                device.capabilities is None
+                or not device.capabilities.supports_ble_health_export
+            ):
+                message = (
+                    "Direct health export is unavailable for this watch. "
+                    "Use supported health payload imports until another Garmin "
+                    "health adapter is configured."
+                )
+                events.append(
+                    SyncProgressEvent(
+                        sync_run_id=sync_run_id,
+                        type="failed",
+                        stage="health_export_unavailable",
+                        message=message,
+                        percent=100,
+                    )
+                )
+                return SyncRunPlan(
+                    events=events,
+                    final_status="failed",
+                    activities_imported=activities_imported,
+                    health_records_imported=0,
+                    error_message=message,
+                )
+
             events.append(
                 SyncProgressEvent(
                     sync_run_id=sync_run_id,
                     type="progress",
                     stage="importing_health",
-                    message="Mock imported 5 health records.",
+                    message="Importing health exports from watch.",
                     percent=82,
                 )
             )
+            try:
+                payloads = self.provider.export_health(device.bluetooth_address)
+            except WatchProviderError as exc:
+                message = safe_error_summary(exc.message) or "Health export failed."
+                events.append(
+                    SyncProgressEvent(
+                        sync_run_id=sync_run_id,
+                        type="failed",
+                        stage="failed",
+                        message=message,
+                        percent=100,
+                    )
+                )
+                return SyncRunPlan(
+                    events=events,
+                    final_status="failed",
+                    activities_imported=activities_imported,
+                    health_records_imported=0,
+                    error_message=message,
+                )
+
+            health_summary = HealthImportService(
+                self.session,
+                self.runtime_settings,
+            ).import_watch_health_exports(
+                device_id=device.id,
+                payloads=payloads,
+            )
+            health_records_imported = health_summary.records_created
+            if health_summary.payloads_failed > 0:
+                message = (
+                    "One or more direct health exports could not be imported. "
+                    f"Created {health_summary.records_created}, skipped "
+                    f"{health_summary.records_skipped}, "
+                    f"failed {health_summary.payloads_failed}."
+                )
+                events.append(
+                    SyncProgressEvent(
+                        sync_run_id=sync_run_id,
+                        type="failed",
+                        stage="failed",
+                        message=message,
+                        percent=100,
+                    )
+                )
+                return SyncRunPlan(
+                    events=events,
+                    final_status="failed",
+                    activities_imported=activities_imported,
+                    health_records_imported=health_records_imported,
+                    error_message=message,
+                )
 
         events.append(
             SyncProgressEvent(
                 sync_run_id=sync_run_id,
                 type="completed",
                 stage="completed",
-                message="Mock sync completed successfully.",
+                message="Sync completed successfully.",
                 percent=100,
             )
         )

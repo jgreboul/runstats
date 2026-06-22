@@ -162,70 +162,7 @@ stress, body battery, respiration, and pulse ox when available.
 
 ### Backlog Items
 
-#### P7-001: Define Health Metric Normalization
-
-Create metric type constants and unit normalization rules.
-
-Acceptance criteria:
-
-- Supported metrics have stable internal names.
-- Units are canonical and documented.
-- Unsupported metrics can be ignored or recorded as warnings.
-
-Validation:
-
-- Unit tests for normalization rules.
-
-#### P7-002: Implement Health Importer
-
-Convert supported health payloads or fixture exports into `health_metrics`
-records.
-
-Acceptance criteria:
-
-- Timestamped and interval metrics are supported.
-- Duplicate source records are detected.
-- Partial payloads import valid records and report skipped data.
-
-Validation:
-
-- Unit tests with fixture payloads.
-- Integration tests for persistence and duplicate handling.
-
-#### P7-003: Connect Health Import to Sync
-
-Add health import to manual and scheduled sync paths when a supported health
-export source is available.
-
-Acceptance criteria:
-
-- Sync can import activities only, health only, or both.
-- Imported health record counts are tracked.
-- Health charts update after sync.
-- Unsupported direct BLE health export produces a clear UI and sync-history
-  message instead of failing silently.
-
-Validation:
-
-- Sync service tests with fake provider exports.
-- API tests for sync result counts.
-
-#### P7-004: Evaluate Alternate Health Data Sources
-
-If direct BLE health export is unavailable for the target watch, evaluate the
-next supported path.
-
-Acceptance criteria:
-
-- The evaluation compares folder/import fixtures, Garmin Health SDK, Garmin
-  Connect Developer Program APIs, and Garmin Connect based adapters.
-- Privacy, credentials, platform support, and approval requirements are
-  documented.
-- A recommended path is added to the backlog before implementation starts.
-
-Validation:
-
-- Documentation review against official Garmin sources.
+All Phase 7 backlog items are complete. See `DONE Backlog Items`.
 
 ## Phase 8: Chat Assistant
 
@@ -1295,3 +1232,94 @@ Validation:
   folder-import messaging.
 - Ran targeted backend tests successfully:
   `uv run pytest tests/test_phase6_fit_parser.py tests/test_phase6_import_service.py tests/test_phase6_api.py tests/test_phase6_sync_imports.py tests/test_phase4_services.py tests/test_phase4_api.py`.
+
+### P7-001: Define Health Metric Normalization
+
+Status: Done
+
+Implemented:
+
+- Added stable internal metric names for `steps`, `resting_hr`, `hrv`, `sleep`,
+  `stress`, `body_battery`, `respiration`, and `pulse_ox`.
+- Added canonical unit normalization for counts, beats per minute,
+  milliseconds, sleep hours, scores, breaths per minute, and percent values.
+- Added alias handling for common JSON export names and Garmin-style summary
+  fields.
+- Reported unsupported metrics and invalid records as import warnings instead
+  of crashing the whole payload.
+
+Validation:
+
+- Added parser unit tests for supported metric aliases, unit conversion, daily
+  summary expansion, and unsupported metric handling.
+- Ran `npm run validate` successfully.
+
+### P7-002: Implement Health Importer
+
+Status: Done
+
+Implemented:
+
+- Added `HealthPayloadParser` for JSON health payloads and fixture exports.
+- Added `HealthImportService` to persist normalized health records into
+  `health_metrics`.
+- Archived raw health payloads as `raw_imports.kind = "health_payload"` under
+  the configured local raw archive path.
+- Added duplicate detection by raw payload, raw source, source record id, and
+  exact metric signature.
+- Supported partial payload imports where valid records are stored and skipped
+  records are reported with warnings.
+- Added `POST /api/imports/health-payload` for local JSON payload imports.
+
+Validation:
+
+- Added persistence and duplicate-handling integration tests.
+- Added API integration coverage for importing a local health payload and
+  discovering the resulting metric through `GET /api/health/metrics`.
+- Ran `npm run validate` successfully.
+
+### P7-003: Connect Health Import to Sync
+
+Status: Done
+
+Implemented:
+
+- Updated manual sync to import direct provider health exports only when stored
+  capabilities report direct BLE health export support.
+- Tracked imported health record counts from the real health import service
+  instead of a mock count.
+- Preserved activity-only, health-only, and combined sync requests through the
+  existing `ManualSyncRequest` flags.
+- Returned clear sync progress and sync-history messages when direct BLE health
+  export is unsupported.
+- Invalidated frontend health and activity queries after sync completion or
+  failure so charts refresh after imports.
+
+Validation:
+
+- Added sync service tests for supported direct health export, persisted record
+  counts, and unsupported direct health export messaging.
+- Updated API sync tests to assert real imported health record counts.
+- Ran `npm run validate` successfully.
+
+### P7-004: Evaluate Alternate Health Data Sources
+
+Status: Done
+
+Implemented:
+
+- Added `docs/health-import-sources.md` comparing local health fixture imports,
+  Garmin Health SDK, Garmin Connect Developer Program Health API, and Garmin
+  Connect based adapters.
+- Documented privacy, credential, platform, approval, and commercial access
+  implications for each source.
+- Recommended the local JSON payload import path as the near-term bootstrap and
+  replay workflow.
+- Deferred Garmin Health SDK and Garmin Connect Developer Program integrations
+  until RunStats intentionally adds mobile-app or OAuth credential flows.
+
+Validation:
+
+- Reviewed official Garmin Health API, Garmin Connect Developer Program FAQ,
+  and Garmin Health SDK FAQ pages on 2026-06-22.
+- Ran `npm run validate` successfully.

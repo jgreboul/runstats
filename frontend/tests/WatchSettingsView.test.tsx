@@ -91,7 +91,7 @@ describe("WatchSettingsView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Start sync" }));
     expect(await screen.findByText("Sync succeeded")).toBeInTheDocument();
-    expect(screen.getByText("Mock sync completed successfully.")).toBeInTheDocument();
+    expect(screen.getByText("Sync completed successfully.")).toBeInTheDocument();
     expect(MockWebSocket.instances[0]?.url).toContain(
       "/api/sync-runs/mock-sync-001/events",
     );
@@ -290,7 +290,7 @@ const syncEvents: SyncProgressEvent[] = [
     type: "progress",
   },
   {
-    message: "Mock sync completed successfully.",
+    message: "Sync completed successfully.",
     percent: 100,
     stage: "completed",
     sync_run_id: "mock-sync-001",

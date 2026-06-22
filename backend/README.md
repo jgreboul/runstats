@@ -36,6 +36,7 @@ GET /api/sync-runs/{sync_run_id}
 GET /api/settings
 PATCH /api/settings
 POST /api/imports/fit-folder
+POST /api/imports/health-payload
 POST /api/devices/scan
 POST /api/devices/pair
 GET /api/devices
@@ -114,6 +115,25 @@ uv run python -m runstats.importers.fit_folder --device-id device-uuid --folder-
 
 Use `--database-path` and `--raw-archive-path` to target alternate local data
 locations.
+
+## Import Health Payload Fixtures
+
+Import a local JSON health payload through the API:
+
+```text
+POST /api/imports/health-payload
+```
+
+```json
+{
+  "device_id": "device-uuid",
+  "file_path": "D:/Garmin/Health/daily-health.json"
+}
+```
+
+Supported metric names normalize to `steps`, `resting_hr`, `hrv`, `sleep`,
+`stress`, `body_battery`, `respiration`, and `pulse_ox`. Canonical units are
+documented in `docs/health-import-sources.md` and enforced by the importer.
 
 ## Validate
 

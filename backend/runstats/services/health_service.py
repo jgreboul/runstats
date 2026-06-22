@@ -22,7 +22,7 @@ from runstats.services.time_buckets import (
     ensure_valid_range,
 )
 
-SUM_AGGREGATED_METRICS = {"steps"}
+SUM_AGGREGATED_METRICS = {"sleep", "steps"}
 
 
 class HealthService:

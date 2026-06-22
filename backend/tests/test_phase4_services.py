@@ -1,6 +1,7 @@
+import json
 from pathlib import Path
 
-from runstats.bluetooth import FakeWatchProfile, FakeWatchProvider
+from runstats.bluetooth import FakeWatchProfile, FakeWatchProvider, WatchExportPayload
 from runstats.config import Settings
 from runstats.db.models import Base
 from runstats.db.session import (
@@ -134,23 +135,33 @@ def test_sync_service_runs_successful_and_failed_fake_lifecycles(
 ) -> None:
     session_factory = _session_factory(tmp_path, "sync.sqlite3")
     progress_store = SyncProgressStore()
+    health_provider = ExportingHealthProvider()
 
     with session_factory() as session:
-        device_service = DeviceService(session)
+        device_service = DeviceService(session, health_provider)
         online = device_service.pair_device(
             DevicePairRequest(
-                bluetooth_device_id="fake-fr935-001",
+                bluetooth_device_id="fake-fr-health",
                 display_name=None,
             )
         )
-        offline = device_service.pair_device(
+        device_service.probe_capabilities(online.id)
+
+        offline = DeviceService(session).pair_device(
             DevicePairRequest(
                 bluetooth_device_id="fake-fr935-offline",
                 display_name=None,
             )
         )
 
-        sync_service = SyncService(session)
+        sync_service = SyncService(
+            session,
+            health_provider,
+            Settings(
+                database_path=tmp_path / "sync.sqlite3",
+                raw_archive_path=tmp_path / "archive",
+            ),
+        )
         running = sync_service.start_manual_sync(
             ManualSyncRequest(
                 device_id=online.id,
@@ -174,7 +185,7 @@ def test_sync_service_runs_successful_and_failed_fake_lifecycles(
     assert running.status == "running"
     assert completed.status == "succeeded"
     assert completed.activities_imported == 0
-    assert completed.health_records_imported == 5
+    assert completed.health_records_imported == 1
     assert [event.stage for event in plan.events] == [
         "connecting",
         "importing_health",
@@ -189,3 +200,48 @@ def _session_factory(tmp_path: Path, filename: str) -> SessionFactory:
     engine = create_sqlite_engine(settings)
     Base.metadata.create_all(bind=engine)
     return create_session_factory(engine)
+
+
+class ExportingHealthProvider(FakeWatchProvider):
+    def __init__(self) -> None:
+        super().__init__(
+            (
+                FakeWatchProfile(
+                    bluetooth_device_id="fake-fr-health",
+                    name="Garmin Forerunner Health",
+                    model="Forerunner Health",
+                    model_hint="Forerunner",
+                    rssi=-45,
+                    serial_number="FR-HEALTH",
+                    firmware_version="1.0",
+                    supports_ble_activity_export=False,
+                    supports_ble_health_export=True,
+                    supports_folder_import=True,
+                    connection_succeeds=True,
+                    capability_notes="Direct health export detected.",
+                ),
+            )
+        )
+
+    def export_health(self, bluetooth_device_id: str) -> list[WatchExportPayload]:
+        assert bluetooth_device_id == "fake-fr-health"
+        return [
+            WatchExportPayload(
+                kind="health",
+                source_id="watch-health.json",
+                content_type="application/json",
+                payload=json.dumps(
+                    {
+                        "records": [
+                            {
+                                "metric_type": "steps",
+                                "start_time": "2026-06-01T00:00:00Z",
+                                "value": 8420,
+                                "unit": "count",
+                                "source_record_id": "watch-steps",
+                            }
+                        ]
+                    }
+                ).encode("utf-8"),
+            )
+        ]

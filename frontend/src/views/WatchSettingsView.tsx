@@ -176,19 +176,25 @@ export function WatchSettingsView() {
     const socket = new WebSocket(buildSyncRunEventsUrl(syncRun.id));
     socketRef.current = socket;
 
+    const invalidateSyncedData = () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.activities.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.health.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.syncRuns.all });
+    };
+
     socket.onmessage = (message) => {
       const event = JSON.parse(String(message.data)) as SyncProgressEvent;
       setSyncEvents((current) => [...current, event]);
       if (event.type === "completed") {
         setSyncStatus("succeeded");
         socket.close();
-        void queryClient.invalidateQueries({ queryKey: queryKeys.syncRuns.all });
+        invalidateSyncedData();
       }
       if (event.type === "failed") {
         setSyncStatus("failed");
         setSyncError(event.message);
         socket.close();
-        void queryClient.invalidateQueries({ queryKey: queryKeys.syncRuns.all });
+        invalidateSyncedData();
       }
     };
 

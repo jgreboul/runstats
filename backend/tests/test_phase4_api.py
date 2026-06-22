@@ -1,9 +1,16 @@
+import json
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from runstats.bluetooth import FakeWatchProvider, WatchDiscovery, WatchProviderError
+from runstats.bluetooth import (
+    FakeWatchProfile,
+    FakeWatchProvider,
+    WatchDiscovery,
+    WatchExportPayload,
+    WatchProviderError,
+)
 from runstats.config import Settings
 from runstats.db.models import Base
 from runstats.main import create_app
@@ -100,14 +107,15 @@ def test_device_api_maps_provider_scan_errors(tmp_path: Path) -> None:
 
 
 def test_sync_api_starts_manual_sync_and_streams_progress(tmp_path: Path) -> None:
-    app = _empty_app(tmp_path)
+    app = _empty_app(tmp_path, watch_provider=ExportingHealthProvider())
 
     with TestClient(app) as client:
         pair = client.post(
             "/api/devices/pair",
-            json={"bluetooth_device_id": "fake-fr935-001"},
+            json={"bluetooth_device_id": "fake-fr-health"},
         )
         device_id = pair.json()["id"]
+        client.post(f"/api/devices/{device_id}/probe-capabilities")
         created = client.post(
             "/api/sync-runs",
             json={
@@ -132,7 +140,7 @@ def test_sync_api_starts_manual_sync_and_streams_progress(tmp_path: Path) -> Non
     assert detail.status_code == 200
     assert detail.json()["status"] == "succeeded"
     assert detail.json()["activities_imported"] == 0
-    assert detail.json()["health_records_imported"] == 5
+    assert detail.json()["health_records_imported"] == 1
 
 
 class UnavailableScanProvider(FakeWatchProvider):
@@ -143,6 +151,51 @@ class UnavailableScanProvider(FakeWatchProvider):
             "Bluetooth adapter is unavailable.",
             status_code=503,
         )
+
+
+class ExportingHealthProvider(FakeWatchProvider):
+    def __init__(self) -> None:
+        super().__init__(
+            (
+                FakeWatchProfile(
+                    bluetooth_device_id="fake-fr-health",
+                    name="Garmin Forerunner Health",
+                    model="Forerunner Health",
+                    model_hint="Forerunner",
+                    rssi=-45,
+                    serial_number="FR-HEALTH",
+                    firmware_version="1.0",
+                    supports_ble_activity_export=False,
+                    supports_ble_health_export=True,
+                    supports_folder_import=True,
+                    connection_succeeds=True,
+                    capability_notes="Direct health export detected.",
+                ),
+            )
+        )
+
+    def export_health(self, bluetooth_device_id: str) -> list[WatchExportPayload]:
+        assert bluetooth_device_id == "fake-fr-health"
+        return [
+            WatchExportPayload(
+                kind="health",
+                source_id="watch-health.json",
+                content_type="application/json",
+                payload=json.dumps(
+                    {
+                        "records": [
+                            {
+                                "metric_type": "steps",
+                                "start_time": "2026-06-01T00:00:00Z",
+                                "value": 8420,
+                                "unit": "count",
+                                "source_record_id": "watch-steps",
+                            }
+                        ]
+                    }
+                ).encode("utf-8"),
+            )
+        ]
 
 
 def _empty_app(
