@@ -1,0 +1,23 @@
+{
+  "name": "runstats",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first running and health stats app scaffold.",
+  "scripts": {
+    "install:all": "uv --project backend sync --extra dev && npm --prefix frontend install",
+    "backend:test": "cd backend && uv run pytest",
+    "backend:lint": "cd backend && uv run ruff check .",
+    "backend:typecheck": "cd backend && uv run mypy runstats",
+    "backend:validate": "npm run backend:test && npm run backend:lint && npm run backend:typecheck",
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:test": "npm --prefix frontend run test",
+    "frontend:lint": "npm --prefix frontend run lint",
+    "frontend:typecheck": "npm --prefix frontend run typecheck",
+    "frontend:build": "npm --prefix frontend run build",
+    "frontend:validate": "npm run frontend:test && npm run frontend:lint && npm run frontend:typecheck && npm run frontend:build",
+    "validate": "npm run backend:validate && npm run frontend:validate"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

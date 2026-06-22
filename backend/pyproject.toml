@@ -1,0 +1,54 @@
+[project]
+name = "runstats-backend"
+version = "0.1.0"
+description = "Backend services for the RunStats local-first running analytics application."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "alembic>=1.14,<2",
+  "apscheduler>=3.10,<4",
+  "bleak>=1,<4",
+  "fastapi>=0.115,<1",
+  "fitparse>=1.2,<2",
+  "pydantic>=2.10,<3",
+  "pydantic-settings>=2.7,<3",
+  "sqlalchemy>=2,<3",
+  "uvicorn[standard]>=0.32,<1"
+]
+
+[project.optional-dependencies]
+dev = [
+  "coverage>=7.6,<8",
+  "httpx>=0.28,<1",
+  "mypy>=1.13,<2",
+  "pytest>=8.3,<9",
+  "pytest-asyncio>=0.24,<1",
+  "ruff>=0.8,<1"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["runstats"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["runstats"]
+
+[[tool.mypy.overrides]]
+module = ["runstats.db.migrations.*"]
+ignore_errors = true
