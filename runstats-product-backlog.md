@@ -208,71 +208,7 @@ without developer-only steps.
 
 ### Backlog Items
 
-#### P10-001: Add Data Export
-
-Allow exporting local data.
-
-Acceptance criteria:
-
-- Activities and health metrics can be exported in a documented format.
-- Raw archived files can be included in export when requested.
-- Export excludes chat history unless explicitly requested.
-- Export operation is tested and does not mutate data.
-
-Validation:
-
-- Unit tests for export serialization.
-- Integration test export from seeded database.
-
-#### P10-002: Add Delete Data Controls
-
-Allow deleting local app data and chat history.
-
-Acceptance criteria:
-
-- User can delete chat history.
-- User can delete imported data for a device.
-- Destructive actions require confirmation in the UI.
-
-Validation:
-
-- Backend tests for delete behavior.
-- Frontend tests for confirmation flows.
-
-#### P10-003: Package Local Desktop App
-
-Package the app for local desktop use first.
-
-Acceptance criteria:
-
-- Startup path is documented.
-- Production build can be created.
-- Database location is configurable.
-- The packaged app can run the backend, serve the UI, and use the local SQLite
-  database.
-- The package does not require hosted services for core functionality.
-
-Validation:
-
-- Build backend package.
-- Build frontend production bundle.
-- Run local smoke test.
-
-#### P10-004: Preserve Hosted Website Path
-
-Prepare the frontend and backend boundaries so a hosted website can be evaluated
-later.
-
-Acceptance criteria:
-
-- Frontend environment configuration supports alternate API base URLs.
-- Privacy implications of hosted activity, health, and chat data are documented.
-- Hosted deployment is not required for the local desktop release.
-
-Validation:
-
-- Frontend build test with local and alternate API configuration.
-- Documentation review.
+All Phase 10 backlog items are complete. See `DONE Backlog Items`.
 
 ## Cross-Phase Test Strategy
 
@@ -1366,3 +1302,102 @@ Validation:
   History.
 - Ran targeted frontend tests successfully:
   `npm test -- tests/WatchSettingsView.test.tsx tests/App.test.tsx`.
+
+### P10-001: Add Data Export
+
+Status: Done
+
+Implemented:
+
+- Added `DataManagementService.export_data` and
+  `POST /api/data-management/export`.
+- Exported devices, activities with laps and samples, health metrics, raw import
+  metadata, and optional raw archived file bytes in documented
+  `runstats.local-data.v1` JSON.
+- Kept chat history excluded by default and included it only when
+  `include_chat_history` is explicitly requested.
+- Added a Data Management UI export flow with raw-file and chat-history options.
+- Documented the export format in `docs/privacy-and-data-management.md`.
+
+Validation:
+
+- Added backend service tests for export serialization, raw-file inclusion,
+  chat opt-in behavior, and non-mutating export counts.
+- Added API integration coverage for exporting from seeded data.
+- Added frontend API and app interaction tests for export requests.
+- Ran targeted backend tests successfully:
+  `uv run pytest tests/test_phase10_data_management.py tests/test_app.py tests/test_config.py`.
+- Ran targeted frontend tests successfully:
+  `npm run test -- api.test.ts App.test.tsx`.
+
+### P10-002: Add Delete Data Controls
+
+Status: Done
+
+Implemented:
+
+- Added `DELETE /api/data-management/chat-history` to delete all local chat
+  sessions and messages.
+- Added `DELETE /api/data-management/devices/{device_id}/imported-data` to
+  delete imported activities, laps, samples, health metrics, raw import records,
+  and archived raw files for one device while keeping the configured device.
+- Added Data Management UI controls with confirmation gates for chat-history and
+  device-data deletion.
+- Kept Sync History records after device-data deletion for auditability.
+
+Validation:
+
+- Added backend service and API tests for chat deletion, device imported-data
+  deletion, file deletion counts, and missing-device errors.
+- Added frontend app interaction coverage for confirmation-gated destructive
+  actions.
+- Ran targeted backend tests successfully:
+  `uv run pytest tests/test_phase10_data_management.py tests/test_app.py tests/test_config.py`.
+- Ran targeted frontend tests successfully:
+  `npm run test -- api.test.ts App.test.tsx`.
+
+### P10-003: Package Local Desktop App
+
+Status: Done
+
+Implemented:
+
+- Added `RUNSTATS_FRONTEND_DIST_PATH` and FastAPI static serving for the
+  production React bundle with SPA route fallback.
+- Added `runstats-local`, which applies Alembic migrations and starts the
+  combined local API/UI server against the configured SQLite database.
+- Added root scripts: `package:backend`, `package:frontend`, `package:local`,
+  and `start:local`.
+- Documented the local package and startup flow in `README.md`,
+  `backend/README.md`, `docs/local-setup.md`, and
+  `docs/local-desktop-package.md`.
+- Added `backend/dist/` to `.gitignore` for generated package artifacts.
+
+Validation:
+
+- Added backend app tests proving the production frontend bundle is served and
+  `/api` errors remain structured.
+- Built the backend package successfully with `uv build`.
+- Built the frontend production bundle successfully with `npm run build`.
+- Local smoke coverage is provided by the production bundle serving app test.
+
+### P10-004: Preserve Hosted Website Path
+
+Status: Done
+
+Implemented:
+
+- Preserved frontend alternate API origin support through
+  `VITE_RUNSTATS_API_BASE_URL`.
+- Documented hosted privacy implications for activity, health, raw file, chat
+  prompt, and chat tool-summary data in
+  `docs/privacy-and-data-management.md`.
+- Kept hosted deployment out of the local desktop release path.
+- Updated frontend docs to clarify when to leave the API base URL unset.
+
+Validation:
+
+- Built the frontend production bundle with the default local API configuration.
+- Built the frontend production bundle with
+  `VITE_RUNSTATS_API_BASE_URL=http://127.0.0.1:8001`.
+- Reviewed and updated privacy and local package documentation.

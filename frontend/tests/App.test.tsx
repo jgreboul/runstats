@@ -53,6 +53,7 @@ describe("App", () => {
       "Chat Assistant",
       "Watch Settings",
       "Sync History",
+      "Data Management",
     ]) {
       expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
     }
@@ -150,10 +151,46 @@ describe("App", () => {
       "/activities/seed-activity-003",
     );
   });
+
+  it("exports data and confirms destructive data-management actions", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    renderApp("/data-management");
+
+    expect(await screen.findByText("Data export")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Include raw archived files"));
+    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+
+    expect(await screen.findByText("Export ready")).toBeInTheDocument();
+    expect(lastExportRequest).toEqual({
+      include_chat_history: false,
+      include_raw_files: true,
+    });
+    expect(screen.getByText("Health records")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete chat history" }));
+    expect(await screen.findByText("Deleted 2 chat messages.")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Type device name to confirm"), {
+      target: { value: "Garmin Forerunner 935" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Delete imported data" }));
+
+    expect(
+      await screen.findByText(
+        "Deleted 3 activities, 12 health records, and 3 raw import records.",
+      ),
+    ).toBeInTheDocument();
+    expect(confirmSpy).toHaveBeenCalledTimes(2);
+  });
 });
 
 async function mockFetch(input: RequestInfo | URL, init?: RequestInit) {
   const url = new URL(String(input), "http://localhost");
+
+  if (url.pathname === "/api/devices") {
+    return jsonResponse({ items: [mockDevice] });
+  }
 
   if (url.pathname === "/api/activities/summary") {
     return jsonResponse(activitySummary(url.searchParams.get("bucket") ?? "week"));
@@ -320,6 +357,57 @@ async function mockFetch(input: RequestInfo | URL, init?: RequestInit) {
       offset: Number(url.searchParams.get("offset") ?? 0),
       total: chatSessions.length,
     });
+  }
+
+  if (url.pathname === "/api/data-management/export" && init?.method === "POST") {
+    lastExportRequest = JSON.parse(String(init.body ?? "{}")) as Record<
+      string,
+      boolean
+    >;
+    return jsonResponse({
+      activities,
+      chat_sessions: [],
+      counts: {
+        activities: 3,
+        activity_laps: 19,
+        activity_samples: 18,
+        chat_messages: 0,
+        chat_sessions: 0,
+        devices: 1,
+        health_metrics: 12,
+        raw_files: lastExportRequest.include_raw_files ? 3 : 0,
+        raw_imports: 3,
+      },
+      devices: [mockDevice],
+      exported_at: "2026-06-22T12:00:00Z",
+      format_version: "runstats.local-data.v1",
+      health_metrics: [],
+      include_chat_history: lastExportRequest.include_chat_history,
+      include_raw_files: lastExportRequest.include_raw_files,
+      raw_files: [],
+      raw_imports: [],
+    });
+  }
+
+  if (
+    url.pathname === "/api/data-management/chat-history" &&
+    init?.method === "DELETE"
+  ) {
+    return jsonResponse(deletionResponse({ deleted_chat_messages: 2 }));
+  }
+
+  if (
+    url.pathname ===
+      "/api/data-management/devices/seed-device-forerunner-935/imported-data" &&
+    init?.method === "DELETE"
+  ) {
+    return jsonResponse(
+      deletionResponse({
+        deleted_activities: 3,
+        deleted_health_metrics: 12,
+        deleted_raw_imports: 3,
+      }),
+    );
   }
 
   const chatMessageMatch = url.pathname.match(
@@ -611,6 +699,37 @@ const syncRuns = [
 
 let chatSessions: ReturnType<typeof sessionListItem>[] = [];
 let chatMessagesBySession = new Map<string, unknown[]>();
+let lastExportRequest: Record<string, boolean> | null = null;
+
+const mockDevice = {
+  bluetooth_address: "seed-ble-forerunner-935",
+  capabilities: {
+    capability_notes: "Use folder import until direct export is verified.",
+    device_id: "seed-device-forerunner-935",
+    probed_at: "2026-06-13T06:30:00Z",
+    supports_ble_activity_export: false,
+    supports_ble_health_export: false,
+    supports_folder_import: true,
+  },
+  created_at: "2026-05-22T06:30:00Z",
+  firmware_version: "21.00",
+  id: "seed-device-forerunner-935",
+  last_seen_at: "2026-06-15T07:30:00Z",
+  model: "Forerunner 935",
+  name: "Garmin Forerunner 935",
+  paired_at: "2026-05-22T06:30:00Z",
+  serial_number: "FR935-SEED-001",
+  settings: {
+    auto_sync_enabled: true,
+    device_id: "seed-device-forerunner-935",
+    historical_fit_import_folder: null,
+    import_activities: true,
+    import_health_stats: true,
+    preferred_units: "metric",
+    sync_interval_minutes: 180,
+  },
+  updated_at: "2026-06-15T07:30:00Z",
+};
 
 const chatSupportingData = {
   intent: "combined",
@@ -630,6 +749,7 @@ const chatSupportingData = {
 };
 
 function resetChatState() {
+  lastExportRequest = null;
   const seedSession = {
     created_at: "2026-06-15T10:00:00Z",
     id: "seed-chat-session",
@@ -664,6 +784,22 @@ function resetChatState() {
   };
   chatSessions = [sessionListItem(seedSession)];
   chatMessagesBySession = new Map([[seedSession.id, seedSession.messages]]);
+}
+
+function deletionResponse(overrides: Record<string, number>) {
+  return {
+    deleted_activities: 0,
+    deleted_activity_laps: 0,
+    deleted_activity_samples: 0,
+    deleted_chat_messages: 0,
+    deleted_chat_sessions: 0,
+    deleted_health_metrics: 0,
+    deleted_raw_files: 0,
+    deleted_raw_imports: 0,
+    device_id: null,
+    missing_raw_files: 0,
+    ...overrides,
+  };
 }
 
 function sessionListItem(session: {

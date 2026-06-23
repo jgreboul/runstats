@@ -7,6 +7,7 @@ export type HealthSeriesBucketName = "day" | "week" | "month";
 export type PreferredUnits = "metric" | "imperial";
 export type ChatMessageRole = "user" | "assistant" | "system" | "tool";
 export type ChatReferenceType = "activity" | "health_metric" | "sync_run" | "chart";
+export type DataExportFormatVersion = "runstats.local-data.v1";
 
 export interface ApiErrorBody {
   error?: {
@@ -311,6 +312,50 @@ export interface DeviceConnectionTestResponse {
   error_code: string | null;
 }
 
+export interface DataExportRequest {
+  include_raw_files: boolean;
+  include_chat_history: boolean;
+}
+
+export interface DataExportCounts {
+  devices: number;
+  activities: number;
+  activity_laps: number;
+  activity_samples: number;
+  health_metrics: number;
+  raw_imports: number;
+  raw_files: number;
+  chat_sessions: number;
+  chat_messages: number;
+}
+
+export interface DataExportResponse {
+  format_version: DataExportFormatVersion;
+  exported_at: string;
+  include_raw_files: boolean;
+  include_chat_history: boolean;
+  counts: DataExportCounts;
+  devices: unknown[];
+  activities: unknown[];
+  health_metrics: unknown[];
+  raw_imports: unknown[];
+  raw_files: unknown[];
+  chat_sessions: unknown[];
+}
+
+export interface DataDeletionResponse {
+  device_id: string | null;
+  deleted_activities: number;
+  deleted_activity_laps: number;
+  deleted_activity_samples: number;
+  deleted_health_metrics: number;
+  deleted_raw_imports: number;
+  deleted_raw_files: number;
+  missing_raw_files: number;
+  deleted_chat_sessions: number;
+  deleted_chat_messages: number;
+}
+
 export interface DeviceScanRequest {
   scan_seconds?: number;
 }
@@ -419,6 +464,9 @@ export const queryKeys = {
     capabilities: (deviceId: string) =>
       ["devices", "capabilities", deviceId] as const,
     list: ["devices", "list"] as const,
+  },
+  dataManagement: {
+    all: ["data-management"] as const,
   },
 };
 
@@ -574,6 +622,30 @@ export async function getDeviceCapabilities(
   deviceId: string,
 ): Promise<DeviceCapabilities> {
   return requestJson<DeviceCapabilities>(`/api/devices/${deviceId}/capabilities`);
+}
+
+export async function exportData(
+  request: DataExportRequest,
+): Promise<DataExportResponse> {
+  return requestJson<DataExportResponse>("/api/data-management/export", {
+    body: JSON.stringify(request),
+    method: "POST",
+  });
+}
+
+export async function deleteDataManagementChatHistory(): Promise<DataDeletionResponse> {
+  return requestJson<DataDeletionResponse>("/api/data-management/chat-history", {
+    method: "DELETE",
+  });
+}
+
+export async function deleteImportedDeviceData(
+  deviceId: string,
+): Promise<DataDeletionResponse> {
+  return requestJson<DataDeletionResponse>(
+    `/api/data-management/devices/${deviceId}/imported-data`,
+    { method: "DELETE" },
+  );
 }
 
 export async function startSyncRun(

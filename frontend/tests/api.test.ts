@@ -4,7 +4,10 @@ import {
   ApiError,
   askChatQuestion,
   createChatSession,
+  deleteDataManagementChatHistory,
   deleteChatHistory,
+  deleteImportedDeviceData,
+  exportData,
   getActivity,
   getChatSession,
   getDeviceCapabilities,
@@ -143,6 +146,69 @@ describe("RunStats API client", () => {
     expect(fetchMock).toHaveBeenCalledTimes(5);
   });
 
+  it("exports and deletes local data-management resources", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input), "http://localhost");
+
+      if (url.pathname === "/api/data-management/export") {
+        expect(init?.method).toBe("POST");
+        expect(JSON.parse(String(init?.body))).toEqual({
+          include_chat_history: true,
+          include_raw_files: false,
+        });
+        return jsonResponse({
+          activities: [],
+          chat_sessions: [],
+          counts: {
+            activities: 0,
+            activity_laps: 0,
+            activity_samples: 0,
+            chat_messages: 0,
+            chat_sessions: 0,
+            devices: 0,
+            health_metrics: 0,
+            raw_files: 0,
+            raw_imports: 0,
+          },
+          devices: [],
+          exported_at: "2026-06-22T12:00:00Z",
+          format_version: "runstats.local-data.v1",
+          health_metrics: [],
+          include_chat_history: true,
+          include_raw_files: false,
+          raw_files: [],
+          raw_imports: [],
+        });
+      }
+
+      if (url.pathname === "/api/data-management/chat-history") {
+        expect(init?.method).toBe("DELETE");
+        return jsonResponse(deletionResponse({ deleted_chat_messages: 2 }));
+      }
+
+      expect(url.pathname).toBe(
+        "/api/data-management/devices/device-1/imported-data",
+      );
+      expect(init?.method).toBe("DELETE");
+      return jsonResponse(deletionResponse({ deleted_activities: 3 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      exportData({ include_chat_history: true, include_raw_files: false }),
+    ).resolves.toMatchObject({
+      format_version: "runstats.local-data.v1",
+      include_chat_history: true,
+    });
+    await expect(deleteDataManagementChatHistory()).resolves.toMatchObject({
+      deleted_chat_messages: 2,
+    });
+    await expect(deleteImportedDeviceData("device-1")).resolves.toMatchObject({
+      deleted_activities: 3,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("normalizes structured backend errors", async () => {
     vi.stubGlobal(
       "fetch",
@@ -238,5 +304,21 @@ function chatSession(messages: unknown[]) {
     messages,
     title: "New chat",
     updated_at: "2026-06-15T10:00:00Z",
+  };
+}
+
+function deletionResponse(overrides: Record<string, number>) {
+  return {
+    deleted_activities: 0,
+    deleted_activity_laps: 0,
+    deleted_activity_samples: 0,
+    deleted_chat_messages: 0,
+    deleted_chat_sessions: 0,
+    deleted_health_metrics: 0,
+    deleted_raw_files: 0,
+    deleted_raw_imports: 0,
+    device_id: null,
+    missing_raw_files: 0,
+    ...overrides,
   };
 }

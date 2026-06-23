@@ -3,6 +3,7 @@ import { NavLink, Route, Routes } from "react-router-dom";
 import "./App.css";
 import { ActivitiesView, ActivityDetailView } from "./views/ActivitiesView";
 import { ChatAssistantView } from "./views/ChatAssistantView";
+import { DataManagementView } from "./views/DataManagementView";
 import { DashboardView } from "./views/DashboardView";
 import { HealthView } from "./views/HealthView";
 import { SyncHistoryView, SyncRunDetailView } from "./views/SyncHistoryView";
@@ -15,6 +16,7 @@ const navigationItems = [
   { label: "Chat Assistant", path: "/chat" },
   { label: "Watch Settings", path: "/watch" },
   { label: "Sync History", path: "/sync-history" },
+  { label: "Data Management", path: "/data-management" },
 ];
 
 function NotFoundView() {
@@ -66,6 +68,7 @@ export default function App() {
             path="/sync-history/:syncRunId"
             element={<SyncRunDetailView />}
           />
+          <Route path="/data-management" element={<DataManagementView />} />
           <Route path="*" element={<NotFoundView />} />
         </Routes>
       </main>

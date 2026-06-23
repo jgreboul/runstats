@@ -31,6 +31,12 @@ def default_raw_archive_path() -> Path:
     return repository_root() / "data" / "archive" / "raw-imports"
 
 
+def default_frontend_dist_path() -> Path:
+    """Default production frontend bundle path."""
+
+    return repository_root() / "frontend" / "dist"
+
+
 def sqlite_database_url(database_path: Path) -> str:
     """Build a SQLAlchemy SQLite URL for a filesystem path."""
 
@@ -47,6 +53,7 @@ class Settings(BaseSettings):
 
     database_path: Path = Field(default_factory=default_database_path)
     raw_archive_path: Path = Field(default_factory=default_raw_archive_path)
+    frontend_dist_path: Path = Field(default_factory=default_frontend_dist_path)
     watch_provider: WatchProviderName = "bleak"
     local_chat_base_url: str = "http://127.0.0.1:11434"
     local_chat_model: str = "llama3.2"

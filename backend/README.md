@@ -47,6 +47,9 @@ PATCH /api/devices/{device_id}/settings
 POST /api/devices/{device_id}/test-connection
 POST /api/devices/{device_id}/probe-capabilities
 GET /api/devices/{device_id}/capabilities
+POST /api/data-management/export
+DELETE /api/data-management/chat-history
+DELETE /api/data-management/devices/{device_id}/imported-data
 ```
 
 ## Configuration
@@ -54,6 +57,9 @@ GET /api/devices/{device_id}/capabilities
 The SQLite path is configurable through `RUNSTATS_DATABASE_PATH`. If unset, the
 backend uses `../data/runstats.sqlite3` from this package directory. The raw
 import archive path is configurable through `RUNSTATS_RAW_ARCHIVE_PATH`.
+The production frontend bundle path is configurable through
+`RUNSTATS_FRONTEND_DIST_PATH`; when `index.html` exists there, FastAPI serves
+the React app for local desktop-style use.
 Automatic sync polling uses `RUNSTATS_SYNC_SCHEDULER_POLL_SECONDS`, defaulting
 to 60 seconds between due-sync checks.
 
@@ -139,6 +145,25 @@ POST /api/imports/health-payload
 Supported metric names normalize to `steps`, `resting_hr`, `hrv`, `sleep`,
 `stress`, `body_battery`, `respiration`, and `pulse_ox`. Canonical units are
 documented in `docs/health-import-sources.md` and enforced by the importer.
+
+## Local App Launcher
+
+Run the backend as a combined local app server after building the frontend:
+
+```bash
+uv run runstats-local
+```
+
+The launcher applies Alembic migrations to the configured SQLite database, then
+serves the API and production frontend bundle from one local process.
+
+## Data Management
+
+The data-management API exports local data as
+`runstats.local-data.v1` JSON. Raw file bytes and chat history are excluded
+unless explicitly requested. Delete endpoints support clearing chat history and
+removing imported activity, health, raw import, and archived raw file data for a
+single device. See `../docs/privacy-and-data-management.md`.
 
 ## Validate
 

@@ -522,6 +522,40 @@ td a:hover {
   margin-bottom: 18px;
 }
 
+.data-management-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(280px, 0.7fr);
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.data-management-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.data-management-summary {
+  margin-top: 16px;
+}
+
+.danger-button {
+  border-color: #d8aaa0;
+  color: #8e2d1d;
+}
+
+.danger-button:hover {
+  border-color: #c44d34;
+  color: #c44d34;
+}
+
+.success-copy {
+  border-left: 4px solid #3a7d44;
+  padding: 12px 14px;
+  background: #f4fbf5;
+  color: #245b2d;
+  font-weight: 700;
+}
+
 .watch-layout-wide {
   grid-template-columns: minmax(360px, 1fr) minmax(320px, 0.8fr);
 }
@@ -845,6 +879,7 @@ td a:hover {
   .dashboard-grid,
   .detail-grid,
   .chart-grid,
+  .data-management-grid,
   .watch-layout,
   .watch-layout-wide,
   .chat-layout {
@@ -885,6 +920,7 @@ td a:hover {
   .dashboard-grid,
   .detail-grid,
   .chart-grid,
+  .data-management-grid,
   .filter-panel,
   .watch-layout,
   .watch-layout-wide,

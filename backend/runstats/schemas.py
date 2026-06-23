@@ -21,6 +21,7 @@ ChatRetentionPolicy = Literal[
 ]
 ChatMessageRole = Literal["user", "assistant", "system", "tool"]
 ChatReferenceType = Literal["activity", "health_metric", "sync_run", "chart"]
+RawFileExportKind = Literal["activity_fit", "health_payload", "unknown"]
 
 
 class SerializableModel(BaseModel):
@@ -600,3 +601,185 @@ class ChatAnswerResponse(SerializableModel):
     message_id: str
     answer: str
     supporting_data: ChatSupportingData
+
+
+class DataExportRequest(SerializableModel):
+    """Options for exporting local RunStats data."""
+
+    include_raw_files: bool = False
+    include_chat_history: bool = False
+
+
+class DataExportCounts(SerializableModel):
+    """Record counts included in one data export."""
+
+    devices: int
+    activities: int
+    activity_laps: int
+    activity_samples: int
+    health_metrics: int
+    raw_imports: int
+    raw_files: int
+    chat_sessions: int
+    chat_messages: int
+
+
+class DataExportDevice(SerializableModel):
+    """Device record included in a local data export."""
+
+    id: str
+    name: str
+    model: str
+    bluetooth_address: str
+    serial_number: str | None
+    firmware_version: str | None
+    paired_at: datetime | None
+    last_seen_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+    settings: DeviceSettingsResponse | None
+    capabilities: DeviceCapabilitiesResponse | None
+
+
+class DataExportActivityLap(SerializableModel):
+    """Lap record included in a local data export."""
+
+    id: str
+    lap_index: int
+    started_at: datetime
+    duration_seconds: float
+    distance_meters: float
+    avg_heart_rate: int | None
+    avg_pace_seconds_per_km: float | None
+
+
+class DataExportActivitySample(SerializableModel):
+    """Activity sample included in a local data export."""
+
+    id: int
+    sample_time: datetime
+    elapsed_seconds: float
+    distance_meters: float | None
+    latitude: float | None
+    longitude: float | None
+    elevation_meters: float | None
+    heart_rate: int | None
+    cadence: float | None
+    power_watts: float | None
+    speed_meters_per_second: float | None
+
+
+class DataExportActivity(SerializableModel):
+    """Activity and child records included in a local data export."""
+
+    id: str
+    device_id: str
+    source_activity_id: str
+    sport: str
+    name: str
+    started_at: datetime
+    duration_seconds: float
+    distance_meters: float
+    calories: int | None
+    avg_heart_rate: int | None
+    max_heart_rate: int | None
+    avg_cadence: float | None
+    avg_pace_seconds_per_km: float | None
+    elevation_gain_meters: float | None
+    training_effect: float | None
+    raw_file_id: str | None
+    created_at: datetime
+    laps: list[DataExportActivityLap]
+    samples: list[DataExportActivitySample]
+
+
+class DataExportHealthMetric(SerializableModel):
+    """Health metric record included in a local data export."""
+
+    id: int
+    device_id: str
+    metric_type: str
+    start_time: datetime
+    end_time: datetime | None
+    value: float
+    unit: str
+    source_record_id: str | None
+
+
+class DataExportRawImport(SerializableModel):
+    """Raw import metadata included in a local data export."""
+
+    id: str
+    device_id: str
+    source_id: str
+    kind: str
+    sha256: str
+    storage_path: str
+    imported_at: datetime
+
+
+class DataExportRawFile(SerializableModel):
+    """Optional raw archived file content included in a local data export."""
+
+    raw_import_id: str
+    source_id: str
+    kind: RawFileExportKind
+    sha256: str
+    storage_path: str
+    byte_size: int
+    content_base64: str | None
+    included: bool
+    missing: bool
+    error: str | None
+
+
+class DataExportChatMessage(SerializableModel):
+    """Chat message included only when chat export is explicitly requested."""
+
+    id: str
+    session_id: str
+    role: ChatMessageRole
+    content: str
+    tool_trace_json: str | None
+    created_at: datetime
+
+
+class DataExportChatSession(SerializableModel):
+    """Chat session included only when chat export is explicitly requested."""
+
+    id: str
+    title: str | None
+    created_at: datetime
+    updated_at: datetime
+    messages: list[DataExportChatMessage]
+
+
+class DataExportResponse(SerializableModel):
+    """Documented local data export payload."""
+
+    format_version: Literal["runstats.local-data.v1"]
+    exported_at: datetime
+    include_raw_files: bool
+    include_chat_history: bool
+    counts: DataExportCounts
+    devices: list[DataExportDevice]
+    activities: list[DataExportActivity]
+    health_metrics: list[DataExportHealthMetric]
+    raw_imports: list[DataExportRawImport]
+    raw_files: list[DataExportRawFile]
+    chat_sessions: list[DataExportChatSession]
+
+
+class DataDeletionResponse(SerializableModel):
+    """Counts deleted by a local data-management operation."""
+
+    device_id: str | None = None
+    deleted_activities: int = 0
+    deleted_activity_laps: int = 0
+    deleted_activity_samples: int = 0
+    deleted_health_metrics: int = 0
+    deleted_raw_imports: int = 0
+    deleted_raw_files: int = 0
+    missing_raw_files: int = 0
+    deleted_chat_sessions: int = 0
+    deleted_chat_messages: int = 0

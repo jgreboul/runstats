@@ -16,6 +16,9 @@ dependencies = [
   "uvicorn[standard]>=0.32,<1"
 ]
 
+[project.scripts]
+runstats-local = "runstats.local_app:main"
+
 [project.optional-dependencies]
 dev = [
   "coverage>=7.6,<8",

@@ -158,6 +158,7 @@ Set these only when needed:
 ```bash
 $env:RUNSTATS_DATABASE_PATH="D:\MYDOCS\MyGitHub\runstats\data\dev.sqlite3"
 $env:RUNSTATS_RAW_ARCHIVE_PATH="D:\MYDOCS\MyGitHub\runstats\data\archive\raw-imports"
+$env:RUNSTATS_FRONTEND_DIST_PATH="D:\MYDOCS\MyGitHub\runstats\frontend\dist"
 $env:RUNSTATS_WATCH_PROVIDER="fake"
 $env:RUNSTATS_LOCAL_CHAT_BASE_URL="http://127.0.0.1:11434"
 $env:RUNSTATS_LOCAL_CHAT_MODEL="llama3.2"
@@ -168,6 +169,7 @@ For macOS or Linux shells:
 ```bash
 export RUNSTATS_DATABASE_PATH="$PWD/data/dev.sqlite3"
 export RUNSTATS_RAW_ARCHIVE_PATH="$PWD/data/archive/raw-imports"
+export RUNSTATS_FRONTEND_DIST_PATH="$PWD/frontend/dist"
 export RUNSTATS_WATCH_PROVIDER=fake
 export RUNSTATS_LOCAL_CHAT_BASE_URL="http://127.0.0.1:11434"
 export RUNSTATS_LOCAL_CHAT_MODEL="llama3.2"
@@ -184,6 +186,25 @@ that can directly reach the backend:
 ```bash
 $env:VITE_RUNSTATS_API_BASE_URL="http://127.0.0.1:8000"
 ```
+
+## Run the Local Production App
+
+Build and run the combined local app from the repository root:
+
+```bash
+npm run package:local
+npm run start:local
+```
+
+`npm run start:local` applies migrations, starts FastAPI, serves the production
+React bundle from `frontend/dist`, and uses the configured local SQLite
+database. Open:
+
+```text
+http://127.0.0.1:8000
+```
+
+See `local-desktop-package.md` for details.
 
 ## Validation
 

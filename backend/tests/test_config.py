@@ -24,6 +24,18 @@ def test_settings_loads_watch_provider_from_environment(monkeypatch: object) -> 
     assert settings.watch_provider == "fake"
 
 
+def test_settings_loads_frontend_dist_path_from_environment(
+    monkeypatch: object,
+    tmp_path: Path,
+) -> None:
+    frontend_dist_path = tmp_path / "dist"
+    monkeypatch.setenv("RUNSTATS_FRONTEND_DIST_PATH", str(frontend_dist_path))
+
+    settings = Settings()
+
+    assert settings.frontend_dist_path == frontend_dist_path
+
+
 def test_settings_creates_local_directories(tmp_path: Path) -> None:
     settings = Settings(
         database_path=tmp_path / "nested" / "runstats.sqlite3",

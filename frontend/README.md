@@ -1,8 +1,8 @@
 # RunStats Frontend
 
-Phase 3 provides the React, TypeScript, Vite, Vitest, and ESLint frontend with
-the RunStats app shell, typed API client, dashboard, activity list and detail
-views, health trends, and sync history.
+React, TypeScript, Vite, Vitest, and ESLint frontend for RunStats. The app
+includes dashboard, activity, health, chat, watch settings, sync history, and
+data management views.
 
 ## Install
 
@@ -19,7 +19,7 @@ npm run dev
 API requests use the current origin by default. During local development, Vite
 proxies `/api` to `http://127.0.0.1:8000`. Set
 `VITE_RUNSTATS_API_BASE_URL` only when the frontend origin can reach the backend
-directly.
+directly. Leave it unset when FastAPI serves `frontend/dist` for the local app.
 
 ## Validate
 

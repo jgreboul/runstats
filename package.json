@@ -15,6 +15,10 @@
     "frontend:typecheck": "npm --prefix frontend run typecheck",
     "frontend:build": "npm --prefix frontend run build",
     "frontend:validate": "npm run frontend:test && npm run frontend:lint && npm run frontend:typecheck && npm run frontend:build",
+    "package:backend": "cd backend && uv build",
+    "package:frontend": "npm run frontend:build",
+    "package:local": "npm run package:frontend && npm run package:backend",
+    "start:local": "cd backend && uv run runstats-local",
     "validate": "npm run backend:validate && npm run frontend:validate"
   },
   "engines": {
