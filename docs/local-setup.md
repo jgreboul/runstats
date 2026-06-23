@@ -376,9 +376,22 @@ If Chat Assistant answers fail:
 - The backend error code `CHAT_MODEL_UNAVAILABLE` means RunStats could query
   local data but could not reach the configured chat model.
 
-If a port is already in use:
+If the backend fails with `WinError 10013` or a port is already in use:
 
-- Stop the process currently using the port.
+- Check whether another process is listening on the default backend port:
+
+```powershell
+Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue |
+  Select-Object LocalAddress,LocalPort,State,OwningProcess
+```
+
+- If the owner is a stale local dev process, stop it from the terminal where it
+  is running, or stop it by process id:
+
+```powershell
+Stop-Process -Id <OwningProcess>
+```
+
 - Or run Uvicorn on another port:
 
 ```bash
