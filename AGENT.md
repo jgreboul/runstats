@@ -206,6 +206,7 @@ Root commands:
 ```bash
 npm run install:all
 npm run validate
+npm run e2e
 ```
 
 Backend commands:
@@ -224,6 +225,8 @@ Frontend commands:
 cd frontend
 npm install
 npm test
+npm run e2e:install
+npm run e2e
 npm run lint
 npm run typecheck
 npm run build
@@ -231,7 +234,8 @@ npm run build
 
 The root `npm run validate` command wraps backend tests, backend linting,
 backend type checking, frontend tests, frontend linting, frontend type checking,
-and the frontend production build.
+and the frontend production build. The root `npm run e2e` command runs the
+browser-level cross-phase suite against a seeded local FastAPI server.
 
 ## Commit Handoff Requirement
 

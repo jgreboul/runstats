@@ -322,7 +322,7 @@ export function ActivityDetailView() {
           data={chartRows(sampleRows)}
           dataKey="paceMinutes"
           name="Pace"
-          stroke="#176b87"
+          stroke="#1c4d8d"
           title="Pace"
           unit="min/km"
         />
@@ -330,7 +330,7 @@ export function ActivityDetailView() {
           data={chartRows(sampleRows)}
           dataKey="heartRate"
           name="Heart rate"
-          stroke="#c44d34"
+          stroke="#4988c4"
           title="Heart rate"
           unit="bpm"
         />
@@ -338,7 +338,7 @@ export function ActivityDetailView() {
           data={chartRows(sampleRows)}
           dataKey="elevation"
           name="Elevation"
-          stroke="#3a7d44"
+          stroke="#0f2854"
           title="Elevation"
           unit="m"
         />
@@ -346,7 +346,7 @@ export function ActivityDetailView() {
           data={chartRows(sampleRows)}
           dataKey="cadence"
           name="Cadence"
-          stroke="#9b6b20"
+          stroke="#bde8f5"
           title="Cadence"
           unit="spm"
         />
@@ -453,7 +453,7 @@ function ActivityRouteMap({ positions }: { positions: LatLngExpression[] }) {
         scrollWheelZoom={false}
         zoom={14}
       >
-        <Polyline pathOptions={{ color: "#176b87", weight: 5 }} positions={positions} />
+        <Polyline pathOptions={{ color: "#1c4d8d", weight: 5 }} positions={positions} />
       </MapContainer>
     </div>
   );

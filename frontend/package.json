@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
+    "e2e": "npm run build && playwright test",
+    "e2e:install": "playwright install chromium",
     "lint": "eslint .",
     "test": "vitest run",
     "typecheck": "tsc -b"
@@ -21,6 +23,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
+    "@playwright/test": "^1.61.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@types/leaflet": "^1.9.18",
@@ -42,4 +45,3 @@
     "node": ">=20"
   }
 }
-

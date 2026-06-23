@@ -11,6 +11,8 @@
     "backend:validate": "npm run backend:test && npm run backend:lint && npm run backend:typecheck",
     "frontend:dev": "npm --prefix frontend run dev",
     "frontend:test": "npm --prefix frontend run test",
+    "frontend:e2e": "npm --prefix frontend run e2e",
+    "frontend:e2e:install": "npm --prefix frontend run e2e:install",
     "frontend:lint": "npm --prefix frontend run lint",
     "frontend:typecheck": "npm --prefix frontend run typecheck",
     "frontend:build": "npm --prefix frontend run build",
@@ -19,6 +21,8 @@
     "package:frontend": "npm run frontend:build",
     "package:local": "npm run package:frontend && npm run package:backend",
     "start:local": "cd backend && uv run runstats-local",
+    "e2e": "npm run frontend:e2e",
+    "e2e:install": "npm run frontend:e2e:install",
     "validate": "npm run backend:validate && npm run frontend:validate"
   },
   "engines": {

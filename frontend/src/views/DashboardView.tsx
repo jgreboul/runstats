@@ -144,7 +144,7 @@ export function DashboardView() {
                     <Line
                       dataKey="paceMinutes"
                       name="Pace"
-                      stroke="#176b87"
+                      stroke="#1c4d8d"
                       strokeWidth={3}
                       type="monotone"
                     />
@@ -170,7 +170,7 @@ export function DashboardView() {
                     <Line
                       dataKey="heartRate"
                       name="Heart rate"
-                      stroke="#c44d34"
+                      stroke="#4988c4"
                       strokeWidth={3}
                       type="monotone"
                     />
@@ -198,7 +198,7 @@ export function DashboardView() {
                     <XAxis dataKey="label" tickLine={false} />
                     <YAxis tickLine={false} width={54} />
                     <Tooltip />
-                    <Bar dataKey="steps" fill="#d3942f" name="Steps" radius={4} />
+                    <Bar dataKey="steps" fill="#4988c4" name="Steps" radius={4} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (

@@ -1,6 +1,9 @@
 # Local Setup
 
-This guide helps a new engineer run RunStats locally from a fresh checkout.
+This guide helps a junior engineer run RunStats locally against a real Garmin
+watch and a local Ollama model. The default path below is real hardware testing,
+not the fake provider used by automated tests.
+
 RunStats has two local services:
 
 - A FastAPI backend in `backend/`
@@ -18,6 +21,9 @@ Install these before starting:
 - Node.js 20 or newer
 - npm
 - Git
+- Bluetooth enabled on the test computer
+- A Garmin Forerunner 935 or newer watch, charged and nearby
+- Ollama installed locally
 
 Check the basics:
 
@@ -26,6 +32,7 @@ python --version
 uv --version
 node --version
 npm --version
+ollama --version
 ```
 
 ## First Install
@@ -39,51 +46,110 @@ npm run install:all
 This installs backend dependencies with `uv` and frontend dependencies with
 npm.
 
-## Configure Local Watch Behavior
-
-For day-to-day development without a physical Garmin watch, use the fake watch
-provider:
+Install the browser used by the end-to-end validation suite:
 
 ```bash
-$env:RUNSTATS_WATCH_PROVIDER="fake"
+npm run e2e:install
+```
+
+## Create A Real-Device `.env`
+
+Copy the template:
+
+```powershell
+Copy-Item .env.example .env
 ```
 
 For macOS or Linux shells:
 
 ```bash
-export RUNSTATS_WATCH_PROVIDER=fake
+cp .env.example .env
 ```
 
-The fake provider returns deterministic Garmin Forerunner devices and lets the
-Watch Settings screen scan, pair, test connection, probe capabilities, and run
-mock sync flows without Bluetooth hardware.
+Use these values for real local testing:
 
-To use real local Bluetooth discovery, leave `RUNSTATS_WATCH_PROVIDER` unset or
-set it to `bleak`. The Bleak provider requires Bluetooth to be enabled and may
-require operating-system permission for local device access.
+```dotenv
+RUNSTATS_DATABASE_PATH=./data/real-device.sqlite3
+RUNSTATS_RAW_ARCHIVE_PATH=./data/archive/raw-imports
+RUNSTATS_FRONTEND_DIST_PATH=./frontend/dist
+RUNSTATS_WATCH_PROVIDER=bleak
+RUNSTATS_LOCAL_CHAT_BASE_URL=http://127.0.0.1:11434
+RUNSTATS_LOCAL_CHAT_MODEL=gemma2
+RUNSTATS_LOCAL_CHAT_TIMEOUT_SECONDS=30
+RUNSTATS_SYNC_SCHEDULER_POLL_SECONDS=60
+```
 
-## Prepare the Database
+Relative paths in `.env` are resolved from the repository root. Use absolute
+paths if you want the database or archive somewhere else.
 
-Apply migrations:
+Use `RUNSTATS_WATCH_PROVIDER=fake` only when you intentionally want deterministic
+mock watch behavior. Real-device testing uses `bleak`.
+
+## Prepare Ollama
+
+Pull the starting local model:
+
+```bash
+ollama pull gemma2
+```
+
+Start Ollama if your installation does not run it automatically:
+
+```bash
+ollama serve
+```
+
+In another terminal, confirm Ollama responds:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:11434/api/tags
+```
+
+For macOS or Linux shells:
+
+```bash
+curl http://127.0.0.1:11434/api/tags
+```
+
+You should see `gemma2` in the local model list after `ollama pull gemma2`.
+
+## Prepare The Database
+
+From the repository root:
 
 ```bash
 cd backend
 uv run alembic upgrade head
-```
-
-Seed representative development data:
-
-```bash
-uv run python -m runstats.db.seed
-```
-
-Return to the repository root before starting both services:
-
-```bash
 cd ..
 ```
 
-## Run the Backend
+Do not seed the real-device database unless you specifically want sample data
+mixed into the same SQLite file. For a clean hardware test, start with the empty
+database created by migrations.
+
+Optional seeded sandbox:
+
+```bash
+cd backend
+uv run python -m runstats.db.seed --database-path ../data/seeded-sandbox.sqlite3
+cd ..
+```
+
+## Put The Watch In A Discoverable State
+
+Before scanning from RunStats:
+
+1. Charge the watch or keep it above low battery.
+2. Keep it within a few feet of the computer.
+3. Enable Bluetooth on the computer.
+4. Put the watch into its phone-pairing or discoverable Bluetooth flow.
+5. If Garmin Connect on a phone keeps taking the connection, temporarily turn
+   off phone Bluetooth during the test.
+
+The exact watch menu varies by model. On many Forerunner models, look for a
+phone, Bluetooth, or Pair Phone option in settings.
+
+## Run The Backend
 
 Open terminal 1 at the repository root:
 
@@ -114,7 +180,7 @@ Expected response:
 }
 ```
 
-## Run the Frontend
+## Run The Frontend
 
 Open terminal 2 at the repository root:
 
@@ -131,63 +197,85 @@ http://127.0.0.1:5173
 Open that URL in a browser. The Vite dev server proxies `/api` requests to the
 backend at `http://127.0.0.1:8000`.
 
-## Try the App
+## Real Device Validation Checklist
 
-Useful first checks:
+Use this checklist for a first hardware pass.
 
-1. Open Dashboard and confirm seeded charts and recent activity data load.
-2. Open Activities and click a seeded activity.
-3. Open Health and switch between available metrics.
-4. Open Sync History and confirm seeded sync runs load.
-5. Open Chat Assistant and ask a seeded-data question.
-6. Open Watch Settings.
-7. Click Scan.
-8. Pair a fake Forerunner watch.
-9. Click Test connection.
-10. Click Probe capabilities.
-11. Start a manual sync.
+1. Open Watch Settings.
+2. Click Scan.
+3. Confirm the real Garmin watch appears.
+4. Pair the watch.
+5. Click Test connection.
+6. Click Probe capabilities.
+7. Record whether direct BLE activity export or direct BLE health export is
+   detected.
+8. Open Sync History and verify the app remains responsive after the probe.
+9. Ask Chat Assistant: `What changed after my last sync?`
+10. Confirm the answer is produced by the local `gemma2` model or, if Ollama is
+    unavailable, that the UI reports `CHAT_MODEL_UNAVAILABLE`.
 
-If you are using the real Bleak provider, scan results depend on nearby BLE
-devices, Bluetooth permissions, and whether a supported Garmin watch is
-advertising.
+Current expected limitation: direct BLE export is not assumed for Forerunner
+935+ watches. If the capability probe does not detect a known export service,
+manual sync can fail with `WATCH_EXPORT_FAILED`. That is a valid result for the
+hardware validation pass. Use folder-based FIT import next.
 
-## Common Environment Variables
+## Import Real Activity FIT Files
 
-Set these only when needed:
+If direct BLE export is unavailable, import FIT files from a local folder.
+Common sources are:
 
-```bash
-$env:RUNSTATS_DATABASE_PATH="D:\MYDOCS\MyGitHub\runstats\data\dev.sqlite3"
-$env:RUNSTATS_RAW_ARCHIVE_PATH="D:\MYDOCS\MyGitHub\runstats\data\archive\raw-imports"
-$env:RUNSTATS_FRONTEND_DIST_PATH="D:\MYDOCS\MyGitHub\runstats\frontend\dist"
-$env:RUNSTATS_WATCH_PROVIDER="fake"
-$env:RUNSTATS_LOCAL_CHAT_BASE_URL="http://127.0.0.1:11434"
-$env:RUNSTATS_LOCAL_CHAT_MODEL="llama3.2"
+- A mounted Garmin watch over USB
+- A folder copied from the watch's `GARMIN/ACTIVITY` directory
+- A Garmin export folder containing `.fit` activity files
+
+First, get the device id after pairing:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/devices | ConvertTo-Json -Depth 8
 ```
 
 For macOS or Linux shells:
 
 ```bash
-export RUNSTATS_DATABASE_PATH="$PWD/data/dev.sqlite3"
-export RUNSTATS_RAW_ARCHIVE_PATH="$PWD/data/archive/raw-imports"
-export RUNSTATS_FRONTEND_DIST_PATH="$PWD/frontend/dist"
-export RUNSTATS_WATCH_PROVIDER=fake
-export RUNSTATS_LOCAL_CHAT_BASE_URL="http://127.0.0.1:11434"
-export RUNSTATS_LOCAL_CHAT_MODEL="llama3.2"
+curl http://127.0.0.1:8000/api/devices
 ```
 
-The Chat Assistant uses an Ollama-compatible local model by default. If no
-local model is running, chat answer requests return `CHAT_MODEL_UNAVAILABLE`;
-the rest of the app continues to work. See `docs/chat-assistant.md`.
-
-Frontend API requests normally work through the Vite proxy. Set
-`VITE_RUNSTATS_API_BASE_URL` only when the frontend is served from an origin
-that can directly reach the backend:
+Then import the FIT folder:
 
 ```bash
-$env:VITE_RUNSTATS_API_BASE_URL="http://127.0.0.1:8000"
+cd backend
+uv run python -m runstats.importers.fit_folder --device-id <device-id> --folder-path "E:\GARMIN\ACTIVITY"
+cd ..
 ```
 
-## Run the Local Production App
+Replace `<device-id>` with the paired device id and replace the folder path with
+the real path on your machine.
+
+After import:
+
+1. Open Activities and confirm real runs appear.
+2. Click a real activity and confirm laps, samples, charts, and route data load
+   when present in the FIT file.
+3. Open Dashboard and confirm totals update.
+4. Ask Chat Assistant: `How much did I run each week?`
+
+## Import Real Health Payloads
+
+Direct BLE health export is currently not assumed. If you have a supported
+local JSON health payload, import it through the API:
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -ContentType "application/json" `
+  -Uri http://127.0.0.1:8000/api/imports/health-payload `
+  -Body '{"device_id":"<device-id>","file_path":"D:/Garmin/Health/daily-health.json"}'
+```
+
+Supported metric names normalize to `steps`, `resting_hr`, `hrv`, `sleep`,
+`stress`, `body_battery`, `respiration`, and `pulse_ox`.
+
+## Run The Local Production App
 
 Build and run the combined local app from the repository root:
 
@@ -206,9 +294,9 @@ http://127.0.0.1:8000
 
 See `local-desktop-package.md` for details.
 
-## Validation
+## Automated Validation
 
-Run the full validation suite from the repository root:
+Run the standard validation suite from the repository root:
 
 ```bash
 npm run validate
@@ -224,20 +312,18 @@ This runs:
 - Frontend type checking
 - Frontend production build
 
-Run backend checks only:
+Run browser-level end-to-end validation:
 
 ```bash
-npm run backend:validate
+npm run e2e
 ```
 
-Run frontend checks only:
+The e2e suite starts a temporary local backend with seeded data, the fake watch
+provider, and a fake chat provider. It validates the implemented app end to end
+without requiring physical hardware or Ollama.
 
-```bash
-npm run frontend:validate
-```
-
-Validation does not require a physical Garmin watch, live Bluetooth hardware,
-a hosted LLM, or a local LLM runtime.
+Real-device validation is manual because it depends on local Bluetooth hardware,
+watch state, operating-system permissions, and the specific Garmin model.
 
 ## Troubleshooting
 
@@ -251,25 +337,42 @@ If the frontend cannot load data:
 
 If the database has no data:
 
+- Confirm you are using the intended `RUNSTATS_DATABASE_PATH`.
 - Run `cd backend`.
 - Run `uv run alembic upgrade head`.
-- Run `uv run python -m runstats.db.seed`.
+- Import real FIT files or intentionally seed a sandbox database.
 - Restart the backend.
 
 If Watch Settings scan fails:
 
-- For development without hardware, set `RUNSTATS_WATCH_PROVIDER=fake` before
-  starting the backend.
-- For real Bluetooth, confirm Bluetooth is enabled and the operating system has
-  granted local device permissions.
-- Keep the watch nearby and make sure it is advertising or discoverable.
+- Confirm `.env` has `RUNSTATS_WATCH_PROVIDER=bleak`.
+- Confirm Bluetooth is enabled.
+- Confirm the operating system has granted Bluetooth or local device access.
+- Keep the watch nearby and in a discoverable state.
+- Temporarily disable phone Bluetooth if the phone keeps reconnecting first.
+- Restart the backend after changing `.env`.
+
+If Test connection fails:
+
+- Wake the watch screen and keep it nearby.
+- Retry after a fresh scan.
+- Remove stale OS-level Bluetooth pairings if the operating system shows the
+  watch but RunStats cannot connect.
+- Check Sync History or backend logs for stable error codes.
+
+If direct sync fails with `WATCH_EXPORT_FAILED`:
+
+- This can be expected for current Forerunner testing.
+- Use folder-based FIT import for activities.
+- Use supported JSON health payload import for health metrics.
+- Keep the capability probe notes with the test report.
 
 If Chat Assistant answers fail:
 
-- Confirm a local Ollama-compatible service is running if chat is configured
-  with the default local provider.
-- Confirm `RUNSTATS_LOCAL_CHAT_BASE_URL` and `RUNSTATS_LOCAL_CHAT_MODEL` match
-  your local model runtime.
+- Confirm Ollama is running.
+- Run `ollama pull gemma2`.
+- Confirm `.env` has `RUNSTATS_LOCAL_CHAT_MODEL=gemma2`.
+- Confirm `RUNSTATS_LOCAL_CHAT_BASE_URL` matches your local Ollama endpoint.
 - The backend error code `CHAT_MODEL_UNAVAILABLE` means RunStats could query
   local data but could not reach the configured chat model.
 
@@ -285,7 +388,7 @@ uv run uvicorn runstats.main:app --reload --port 8001
 
 Then start the frontend with an explicit backend URL:
 
-```bash
+```powershell
 $env:VITE_RUNSTATS_API_BASE_URL="http://127.0.0.1:8001"
 npm run frontend:dev
 ```

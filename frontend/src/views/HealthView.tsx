@@ -201,7 +201,7 @@ export function HealthView() {
                 <Line
                   dataKey="value"
                   name={formatMetricName(metricType)}
-                  stroke="#176b87"
+                  stroke="#1c4d8d"
                   strokeWidth={3}
                   type="monotone"
                 />

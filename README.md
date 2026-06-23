@@ -125,6 +125,14 @@ Run the full local validation suite:
 npm run validate
 ```
 
+Install the Playwright browser once, then run browser-level end-to-end
+validation:
+
+```bash
+npm run e2e:install
+npm run e2e
+```
+
 Run backend validation only:
 
 ```bash
@@ -139,3 +147,6 @@ npm run frontend:validate
 
 The validation commands do not require a physical Garmin watch, live Bluetooth
 device, hosted LLM, or local LLM runtime.
+
+For real-device validation with Bleak and a local Ollama `gemma2` model, follow
+`docs/local-setup.md`.

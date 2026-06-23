@@ -212,6 +212,8 @@ All Phase 10 backlog items are complete. See `DONE Backlog Items`.
 
 ## Cross-Phase Test Strategy
 
+Implementation status: Complete. See `DONE Backlog Items`.
+
 ### Backend Unit Tests
 
 Required for:
@@ -1401,3 +1403,71 @@ Validation:
 - Built the frontend production bundle with
   `VITE_RUNSTATS_API_BASE_URL=http://127.0.0.1:8001`.
 - Reviewed and updated privacy and local package documentation.
+
+### XPT-001: Add Cross-Phase End-to-End Validation
+
+Status: Done
+
+Implemented:
+
+- Added Playwright browser e2e coverage for the primary cross-phase flows:
+  dashboard load, activity browse/detail, watch pair/probe/settings/fake sync,
+  chat answer references, and local data export.
+- Added a seeded local e2e FastAPI server that applies migrations, serves the
+  built frontend bundle, and uses fake watch/chat providers for deterministic
+  end-to-end validation.
+- Added root and frontend e2e scripts plus Chromium install scripts.
+- Scoped Vitest to frontend unit/integration tests so Playwright specs run only
+  under the Playwright runner.
+
+Validation:
+
+- Installed Playwright Chromium with `npm run e2e:install`.
+- Ran full standard validation successfully: `npm run validate`.
+- Ran browser e2e validation successfully: `npm run e2e` with 5 passing
+  Playwright tests.
+
+### XPT-002: Document Real-Device Local Validation
+
+Status: Done
+
+Implemented:
+
+- Added `.env.example` for real local testing with the Bleak watch provider,
+  repo-relative SQLite/archive/frontend paths, and Ollama `gemma2`.
+- Updated backend configuration to load `.env` from the backend or repository
+  root and resolve configured relative paths from the repository root.
+- Reworked `docs/local-setup.md` into a junior-friendly real-device setup guide
+  covering Bluetooth/Garmin pairing, Ollama `gemma2`, clean database startup,
+  local development servers, production local app startup, FIT folder import,
+  health payload import, and troubleshooting.
+- Updated README, backend README, frontend README, and AGENT guidance with the
+  new e2e and real-device validation commands.
+
+Validation:
+
+- Added backend config tests for `.env` loading and repo-root path resolution.
+- Ran full standard validation successfully: `npm run validate`.
+- Ran a non-invasive Bleak provider smoke check confirming the real Bluetooth
+  provider dependency is available.
+- Documented the physical Garmin/Bluetooth validation steps; hardware testing
+  remains a manual checklist because no real watch is attached in this
+  development environment.
+
+### XPT-003: Refresh UI Theme
+
+Status: Done
+
+Implemented:
+
+- Updated the application theme to use the requested ColorHunt palette:
+  `#0F2854`, `#1C4D8D`, `#4988C4`, and `#BDE8F5`.
+- Refreshed shared CSS tokens, page background, navigation, panels, buttons,
+  forms, status surfaces, route map styling, and chart colors to match the new
+  palette while keeping semantic success/warning/error colors readable.
+
+Validation:
+
+- Ran frontend unit/integration coverage through `npm run validate`.
+- Built the frontend production bundle successfully.
+- Ran browser e2e validation successfully: `npm run e2e`.

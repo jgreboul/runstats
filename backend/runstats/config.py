@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
@@ -49,7 +49,11 @@ def sqlite_database_url(database_path: Path) -> str:
 class Settings(BaseSettings):
     """Runtime settings loaded from environment variables."""
 
-    model_config = SettingsConfigDict(env_prefix="RUNSTATS_", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(".env", "../.env"),
+        env_prefix="RUNSTATS_",
+        extra="ignore",
+    )
 
     database_path: Path = Field(default_factory=default_database_path)
     raw_archive_path: Path = Field(default_factory=default_raw_archive_path)
@@ -59,6 +63,16 @@ class Settings(BaseSettings):
     local_chat_model: str = "llama3.2"
     local_chat_timeout_seconds: float = Field(default=20.0, gt=0)
     sync_scheduler_poll_seconds: float = Field(default=60.0, gt=0)
+
+    @field_validator("database_path", "raw_archive_path", "frontend_dist_path")
+    @classmethod
+    def resolve_repository_relative_paths(cls, value: Path) -> Path:
+        """Resolve relative configured paths from the repository root."""
+
+        path = value.expanduser()
+        if path.is_absolute():
+            return path
+        return repository_root() / path
 
     @property
     def database_url(self) -> str:

@@ -63,6 +63,10 @@ the React app for local desktop-style use.
 Automatic sync polling uses `RUNSTATS_SYNC_SCHEDULER_POLL_SECONDS`, defaulting
 to 60 seconds between due-sync checks.
 
+The backend reads `.env` from the current directory or the repository root.
+Relative configured paths are resolved from the repository root. Copy
+`../.env.example` to `../.env` for real-device testing.
+
 The watch provider is configurable through `RUNSTATS_WATCH_PROVIDER`:
 
 - `bleak` uses the local Bluetooth adapter through Bleak. This is the default.

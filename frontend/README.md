@@ -21,10 +21,28 @@ proxies `/api` to `http://127.0.0.1:8000`. Set
 `VITE_RUNSTATS_API_BASE_URL` only when the frontend origin can reach the backend
 directly. Leave it unset when FastAPI serves `frontend/dist` for the local app.
 
+## End-to-End
+
+Install the Playwright browser once:
+
+```bash
+npm run e2e:install
+```
+
+Run the browser-level suite:
+
+```bash
+npm run e2e
+```
+
+The e2e suite builds the frontend, starts a seeded local FastAPI server, and
+drives the real React app through the browser.
+
 ## Validate
 
 ```bash
 npm run test
+npm run e2e
 npm run lint
 npm run typecheck
 npm run build
