@@ -268,7 +268,28 @@ For macOS or Linux shells:
 curl http://127.0.0.1:8000/api/devices
 ```
 
-Then import the FIT folder:
+To import from the UI:
+
+1. Open Watch Settings.
+2. Select the physical watch.
+3. Enter the folder path in Historical FIT import folder.
+4. Click Save settings.
+5. Click Import FIT folder.
+
+The folder path must be a path the backend process can read on the same
+computer, such as `E:\GARMIN\ACTIVITY`. The browser does not choose the folder
+for the backend, so paste or type the full path into the Watch Settings field.
+If the UI reports `0 FIT files checked`, the backend reached the folder but did
+not find any files ending in `.fit`; this is a folder/path issue, not a
+Bluetooth import issue.
+
+On Windows, confirm the folder contains FIT files:
+
+```powershell
+Get-ChildItem -Path "E:\GARMIN\ACTIVITY" -Filter *.fit
+```
+
+Alternatively, import the FIT folder from a terminal:
 
 ```bash
 cd backend
@@ -278,14 +299,6 @@ cd ..
 
 Replace `<device-id>` with the paired device id and replace the folder path with
 the real path on your machine.
-
-You can also import from the UI:
-
-1. Open Watch Settings.
-2. Select the physical watch.
-3. Enter the folder path in Historical FIT import folder.
-4. Click Save settings.
-5. Click Import FIT folder.
 
 After import:
 

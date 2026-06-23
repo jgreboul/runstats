@@ -240,7 +240,6 @@ export function WatchSettingsView() {
     !syncMutation.isPending;
   const canImportFitFolder =
     Boolean(selectedDevice?.capabilities.supports_folder_import) &&
-    settingsForm.historical_fit_import_folder.trim().length > 0 &&
     !fitImportMutation.isPending;
 
   return (
@@ -376,7 +375,10 @@ export function WatchSettingsView() {
             {fitImportResult ? (
               <FitImportSummary result={fitImportResult} />
             ) : !settingsForm.historical_fit_import_folder.trim() ? (
-              <EmptyState title="No FIT folder selected" />
+              <EmptyState
+                message="Enter a local folder path in Historical FIT import folder."
+                title="No FIT folder selected"
+              />
             ) : null}
           </article>
         </section>
@@ -699,6 +701,18 @@ function SyncProgress({
 
 function FitImportSummary({ result }: { result: FitFolderImportResponse }) {
   const total = result.created + result.skipped + result.failed;
+
+  if (total === 0) {
+    return (
+      <div className="connection-result connection-result-failed" role="status">
+        <strong>No FIT files found</strong>
+        <p>
+          RunStats reached the folder, but found no files ending in .fit. Check
+          the folder path and confirm the watch or export folder is mounted.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="connection-result connection-result-connected" role="status">

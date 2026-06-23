@@ -28,6 +28,13 @@ describe("WatchSettingsView", () => {
   beforeEach(() => {
     devices = [];
     fitImportRequest = null;
+    fitImportResponse = {
+      created: 1,
+      failed: 0,
+      files: [],
+      raw_files_archived: 1,
+      skipped: 1,
+    };
     scanFails = false;
     settingsPatch = null;
     MockWebSocket.instances = [];
@@ -107,6 +114,48 @@ describe("WatchSettingsView", () => {
     });
   });
 
+  it("prompts for a folder path before importing FIT files", async () => {
+    devices = [mockDevice()];
+    renderWatchSettings();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Import FIT folder" }));
+
+    expect(await screen.findByText("FIT import failed")).toBeInTheDocument();
+    expect(
+      screen.getByText("Choose a historical FIT import folder first."),
+    ).toBeInTheDocument();
+    expect(fitImportRequest).toBeNull();
+  });
+
+  it("explains when the selected FIT folder contains no FIT files", async () => {
+    const device = mockDevice();
+    devices = [
+      {
+        ...device,
+        settings: {
+          ...device.settings,
+          historical_fit_import_folder: "D:/Runs/Empty",
+        },
+      },
+    ];
+    fitImportResponse = {
+      created: 0,
+      failed: 0,
+      files: [],
+      raw_files_archived: 0,
+      skipped: 0,
+    };
+    renderWatchSettings();
+
+    await screen.findByDisplayValue("D:/Runs/Empty");
+    fireEvent.click(await screen.findByRole("button", { name: "Import FIT folder" }));
+
+    expect(await screen.findByText("No FIT files found")).toBeInTheDocument();
+    expect(
+      screen.getByText(/found no files ending in .fit/i),
+    ).toBeInTheDocument();
+  });
+
   it("shows Bluetooth unavailable scan errors", async () => {
     scanFails = true;
     renderWatchSettings();
@@ -120,6 +169,13 @@ describe("WatchSettingsView", () => {
 
 let devices: Device[] = [];
 let fitImportRequest: unknown = null;
+let fitImportResponse = {
+  created: 1,
+  failed: 0,
+  files: [],
+  raw_files_archived: 1,
+  skipped: 1,
+};
 let scanFails = false;
 let settingsPatch: DeviceSettingsPatchRequest | null = null;
 
@@ -255,13 +311,7 @@ async function mockFetch(input: RequestInfo | URL, init?: RequestInit) {
 
   if (url.pathname === "/api/imports/fit-folder" && method === "POST") {
     fitImportRequest = JSON.parse(String(init?.body ?? "{}"));
-    return jsonResponse({
-      created: 1,
-      failed: 0,
-      files: [],
-      raw_files_archived: 1,
-      skipped: 1,
-    });
+    return jsonResponse(fitImportResponse);
   }
 
   return jsonResponse(
