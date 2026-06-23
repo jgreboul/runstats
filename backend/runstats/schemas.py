@@ -202,6 +202,7 @@ class SyncRunResponse(SerializableModel):
     duration_seconds: float | None
     activities_imported: int
     health_records_imported: int
+    error_code: str | None
     error_summary: str | None
 
 
@@ -328,13 +329,14 @@ class ManualSyncRequest(SerializableModel):
 
 
 class SyncProgressEvent(SerializableModel):
-    """Progress event streamed for a fake sync run."""
+    """Progress event streamed for a sync run."""
 
     sync_run_id: str
     type: Literal["progress", "completed", "failed"]
     stage: str
     message: str
     percent: int = Field(ge=0, le=100)
+    error_code: str | None = None
 
 
 class FitFolderImportRequest(SerializableModel):

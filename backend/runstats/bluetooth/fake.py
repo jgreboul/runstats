@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from runstats.bluetooth.provider import (
     WatchCapabilityProbe,
@@ -199,14 +200,26 @@ class FakeWatchProvider:
             observed_services=profile.service_uuids,
         )
 
-    def export_activities(self, bluetooth_device_id: str) -> list[WatchExportPayload]:
+    def export_activities(
+        self,
+        bluetooth_device_id: str,
+        *,
+        since: datetime | None = None,
+    ) -> list[WatchExportPayload]:
         """Return no fake raw activity payloads yet."""
 
         _ = bluetooth_device_id
+        _ = since
         return []
 
-    def export_health(self, bluetooth_device_id: str) -> list[WatchExportPayload]:
+    def export_health(
+        self,
+        bluetooth_device_id: str,
+        *,
+        since: datetime | None = None,
+    ) -> list[WatchExportPayload]:
         """Return no fake raw health payloads yet."""
 
         _ = bluetooth_device_id
+        _ = since
         return []

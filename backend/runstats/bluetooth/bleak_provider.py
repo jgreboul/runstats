@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import re
 from collections.abc import Coroutine, Iterable, Mapping
+from datetime import datetime
 from importlib import import_module
 from typing import Any
 
@@ -188,20 +189,32 @@ class BleakWatchProvider:
             observed_services=services,
         )
 
-    def export_activities(self, bluetooth_device_id: str) -> list[WatchExportPayload]:
+    def export_activities(
+        self,
+        bluetooth_device_id: str,
+        *,
+        since: datetime | None = None,
+    ) -> list[WatchExportPayload]:
         """Direct BLE activity export is not implemented until probe confirms it."""
 
         _ = bluetooth_device_id
+        _ = since
         raise WatchProviderError(
             "WATCH_EXPORT_UNSUPPORTED",
             "Direct BLE activity export is not available for this provider yet.",
             status_code=409,
         )
 
-    def export_health(self, bluetooth_device_id: str) -> list[WatchExportPayload]:
+    def export_health(
+        self,
+        bluetooth_device_id: str,
+        *,
+        since: datetime | None = None,
+    ) -> list[WatchExportPayload]:
         """Direct BLE health export is not implemented until probe confirms it."""
 
         _ = bluetooth_device_id
+        _ = since
         raise WatchProviderError(
             "WATCH_EXPORT_UNSUPPORTED",
             "Direct BLE health export is not available for this provider yet.",

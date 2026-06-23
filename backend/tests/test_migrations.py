@@ -20,6 +20,9 @@ def test_initial_migration_creates_all_tables(tmp_path: Path) -> None:
     device_settings_columns = {
         column["name"] for column in inspector.get_columns("device_settings")
     }
+    sync_run_columns = {
+        column["name"] for column in inspector.get_columns("sync_runs")
+    }
     engine.dispose()
 
     assert {
@@ -37,3 +40,4 @@ def test_initial_migration_creates_all_tables(tmp_path: Path) -> None:
         "chat_messages",
     }.issubset(tables)
     assert "historical_fit_import_folder" in device_settings_columns
+    assert "error_code" in sync_run_columns

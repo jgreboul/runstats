@@ -1,8 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { getSyncRun, listSyncRuns, queryKeys } from "../api/runstats";
+import {
+  getSyncRun,
+  listSyncRuns,
+  queryKeys,
+  retrySyncRun,
+  type SyncRun,
+} from "../api/runstats";
 import {
   EmptyState,
   ErrorState,
@@ -62,6 +68,7 @@ export function SyncHistoryView() {
                   <th>Duration</th>
                   <th>Activities</th>
                   <th>Health records</th>
+                  <th>Error code</th>
                   <th>Error</th>
                 </tr>
               </thead>
@@ -80,6 +87,7 @@ export function SyncHistoryView() {
                     <td>{formatDuration(run.duration_seconds)}</td>
                     <td>{run.activities_imported}</td>
                     <td>{run.health_records_imported}</td>
+                    <td>{run.error_code ?? "None"}</td>
                     <td>{run.error_summary ?? "None"}</td>
                   </tr>
                 ))}
@@ -94,10 +102,19 @@ export function SyncHistoryView() {
 
 export function SyncRunDetailView() {
   const { syncRunId = "" } = useParams();
+  const queryClient = useQueryClient();
+  const [retriedRun, setRetriedRun] = useState<SyncRun | null>(null);
   const syncRun = useQuery({
     enabled: syncRunId.length > 0,
     queryKey: queryKeys.syncRuns.detail(syncRunId),
     queryFn: () => getSyncRun(syncRunId),
+  });
+  const retryMutation = useMutation({
+    mutationFn: () => retrySyncRun(syncRunId),
+    onSuccess: (run) => {
+      setRetriedRun(run);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.syncRuns.all });
+    },
   });
 
   if (syncRun.isLoading) {
@@ -133,9 +150,21 @@ export function SyncRunDetailView() {
         eyebrow="Sync run detail"
         title={formatStatus(syncRun.data.status)}
         actions={
-          <Link className="secondary-button" to="/sync-history">
-            Back to sync history
-          </Link>
+          <>
+            {syncRun.data.status === "failed" ? (
+              <button
+                className="secondary-button"
+                disabled={retryMutation.isPending}
+                onClick={() => retryMutation.mutate()}
+                type="button"
+              >
+                {retryMutation.isPending ? "Retrying..." : "Retry sync"}
+              </button>
+            ) : null}
+            <Link className="secondary-button" to="/sync-history">
+              Back to sync history
+            </Link>
+          </>
         }
       />
 
@@ -155,7 +184,25 @@ export function SyncRunDetailView() {
           label="Health records"
           value={formatNumber(syncRun.data.health_records_imported)}
         />
+        <StatCard label="Error code" value={syncRun.data.error_code ?? "None"} />
       </section>
+
+      {retriedRun ? (
+        <section className="state-panel" aria-live="polite">
+          <div>
+            <h3>Retry started</h3>
+            <p>
+              <Link to={`/sync-history/${retriedRun.id}`}>
+                {formatStatus(retriedRun.status)} retry
+              </Link>
+            </p>
+          </div>
+        </section>
+      ) : null}
+
+      {retryMutation.isError ? (
+        <ErrorState error={retryMutation.error} title="Retry failed" />
+      ) : null}
 
       <section className="data-panel">
         <div className="panel-heading">

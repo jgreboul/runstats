@@ -182,7 +182,7 @@ def test_sync_service_runs_successful_and_failed_fake_lifecycles(
         assert failed_plan is not None
         failed = sync_service.finalize_manual_sync(failed_running.id, failed_plan)
 
-    assert running.status == "running"
+    assert running.status == "succeeded"
     assert completed.status == "succeeded"
     assert completed.activities_imported == 0
     assert completed.health_records_imported == 1
@@ -192,6 +192,7 @@ def test_sync_service_runs_successful_and_failed_fake_lifecycles(
         "completed",
     ]
     assert failed.status == "failed"
+    assert failed.error_code == "WATCH_CONNECTION_FAILED"
     assert failed.error_summary is not None
 
 
@@ -223,8 +224,14 @@ class ExportingHealthProvider(FakeWatchProvider):
             )
         )
 
-    def export_health(self, bluetooth_device_id: str) -> list[WatchExportPayload]:
+    def export_health(
+        self,
+        bluetooth_device_id: str,
+        *,
+        since: object | None = None,
+    ) -> list[WatchExportPayload]:
         assert bluetooth_device_id == "fake-fr-health"
+        _ = since
         return [
             WatchExportPayload(
                 kind="health",

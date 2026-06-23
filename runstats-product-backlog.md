@@ -193,64 +193,7 @@ and recover from failures.
 
 ### Backlog Items
 
-#### P9-001: Implement Incremental Sync
-
-Track last successful sync and request only new or changed data.
-
-Acceptance criteria:
-
-- Sync uses last successful import state.
-- Re-running sync does not duplicate activities or health metrics.
-- Failed sync does not advance successful sync markers incorrectly.
-
-Validation:
-
-- Unit tests for sync state transitions.
-- Integration tests for repeated sync behavior.
-
-#### P9-002: Implement Scheduled Sync
-
-Add background scheduled sync based on device settings.
-
-Acceptance criteria:
-
-- Auto sync can be enabled and disabled.
-- Sync interval is respected.
-- Scheduled sync does not start if another sync is running.
-
-Validation:
-
-- Unit tests using controllable clock or scheduler fakes.
-
-#### P9-003: Add WebSocket Progress Events
-
-Stream progress for manual and scheduled syncs.
-
-Acceptance criteria:
-
-- UI receives progress stages and completion events.
-- Errors are reported through structured events.
-- Dropped UI connections do not cancel backend sync unexpectedly.
-
-Validation:
-
-- Backend WebSocket tests.
-- Frontend interaction tests for progress updates.
-
-#### P9-004: Improve Error Reporting and Retry
-
-Make sync failures actionable.
-
-Acceptance criteria:
-
-- Known errors map to documented error codes.
-- Sync history shows safe troubleshooting detail.
-- Failed syncs can be retried.
-
-Validation:
-
-- Unit tests for error mapping.
-- UI tests for retry behavior.
+All Phase 9 backlog items are complete. See `DONE Backlog Items`.
 
 ## Phase 10: Packaging, Privacy, and Data Management
 
@@ -1335,3 +1278,91 @@ Validation:
 - Added orchestration test coverage for deferred workout-generation requests.
 - Ran targeted backend tests successfully: `uv run pytest tests/test_phase8_chat.py`.
 - Ran full validation successfully: `npm run validate`.
+
+### P9-001: Implement Incremental Sync
+
+Status: Done
+
+Implemented:
+
+- Refactored sync execution so manual and scheduled syncs use the latest
+  successful sync `finished_at` as the provider `since` marker.
+- Extended the watch provider export contract to accept an optional `since`
+  marker for activity and health exports.
+- Kept failed sync attempts out of successful sync marker selection.
+- Preserved duplicate protection for repeated activity and health imports so
+  repeated syncs skip already imported payloads and records.
+
+Validation:
+
+- Added Phase 9 backend tests for successful, failed, and repeated sync marker
+  transitions.
+- Added repeated health sync coverage proving duplicate health records are not
+  created.
+- Ran targeted backend tests successfully:
+  `uv run pytest tests/test_phase9_sync_reliability.py tests/test_phase4_services.py tests/test_phase4_api.py tests/test_migrations.py`.
+
+### P9-002: Implement Scheduled Sync
+
+Status: Done
+
+Implemented:
+
+- Added `SyncScheduler` with deterministic `run_due_syncs(now=...)` behavior
+  for tests and a background app lifecycle loop for normal runtime.
+- Scheduled sync reads `auto_sync_enabled`, `sync_interval_minutes`, and import
+  toggles from device settings.
+- Scheduled sync skips devices whose latest sync is still running.
+- Added `RUNSTATS_SYNC_SCHEDULER_POLL_SECONDS` for the background polling
+  interval.
+
+Validation:
+
+- Added scheduler tests using explicit clock values for due, not-due, and
+  already-running sync states.
+- Ran backend linting and type checking successfully:
+  `uv run ruff check .` and `uv run mypy runstats`.
+
+### P9-003: Add WebSocket Progress Events
+
+Status: Done
+
+Implemented:
+
+- Changed WebSocket sync progress to observe stored progress events instead of
+  finalizing sync state.
+- Stored progress events for manual, scheduled, and retry syncs in the app
+  progress store.
+- Added structured failed progress events with `error_code`.
+- Preserved terminal fallback events for sync runs whose in-memory progress
+  events are no longer available.
+
+Validation:
+
+- Added API WebSocket coverage showing failed progress events are available
+  after backend sync completion.
+- Kept frontend manual sync progress interaction tests passing with the typed
+  progress event model.
+
+### P9-004: Improve Error Reporting and Retry
+
+Status: Done
+
+Implemented:
+
+- Added nullable `sync_runs.error_code` with Alembic migration
+  `0003_sync_error_codes`.
+- Mapped known provider and import failures to documented sync error codes such
+  as `WATCH_CONNECTION_FAILED`, `WATCH_EXPORT_FAILED`, `IMPORT_PARSE_FAILED`,
+  `DATABASE_WRITE_FAILED`, and `SYNC_ALREADY_RUNNING`.
+- Added `POST /api/sync-runs/{sync_run_id}/retry` for failed sync retries.
+- Updated Sync History UI to show error codes and retry failed sync runs.
+- Added frontend API typing for sync error codes and retry requests.
+
+Validation:
+
+- Added backend retry and error-code tests for failed syncs.
+- Added frontend interaction coverage for retrying a failed sync from Sync
+  History.
+- Ran targeted frontend tests successfully:
+  `npm test -- tests/WatchSettingsView.test.tsx tests/App.test.tsx`.

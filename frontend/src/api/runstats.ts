@@ -185,6 +185,7 @@ export interface SyncRun {
   duration_seconds: number | null;
   activities_imported: number;
   health_records_imported: number;
+  error_code: string | null;
   error_summary: string | null;
 }
 
@@ -340,6 +341,7 @@ export interface SyncProgressEvent {
   stage: string;
   message: string;
   percent: number;
+  error_code?: string | null;
 }
 
 export interface ActivityListParams {
@@ -579,6 +581,12 @@ export async function startSyncRun(
 ): Promise<SyncRun> {
   return requestJson<SyncRun>("/api/sync-runs", {
     body: JSON.stringify(request),
+    method: "POST",
+  });
+}
+
+export async function retrySyncRun(syncRunId: string): Promise<SyncRun> {
+  return requestJson<SyncRun>(`/api/sync-runs/${syncRunId}/retry`, {
     method: "POST",
   });
 }

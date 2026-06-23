@@ -33,6 +33,9 @@ GET /api/health/metrics
 GET /api/health/series
 GET /api/sync-runs
 GET /api/sync-runs/{sync_run_id}
+POST /api/sync-runs
+POST /api/sync-runs/{sync_run_id}/retry
+WS /api/sync-runs/{sync_run_id}/events
 GET /api/settings
 PATCH /api/settings
 POST /api/imports/fit-folder
@@ -51,6 +54,8 @@ GET /api/devices/{device_id}/capabilities
 The SQLite path is configurable through `RUNSTATS_DATABASE_PATH`. If unset, the
 backend uses `../data/runstats.sqlite3` from this package directory. The raw
 import archive path is configurable through `RUNSTATS_RAW_ARCHIVE_PATH`.
+Automatic sync polling uses `RUNSTATS_SYNC_SCHEDULER_POLL_SECONDS`, defaulting
+to 60 seconds between due-sync checks.
 
 The watch provider is configurable through `RUNSTATS_WATCH_PROVIDER`:
 

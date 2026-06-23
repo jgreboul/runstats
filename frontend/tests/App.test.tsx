@@ -114,10 +114,23 @@ describe("App", () => {
   it("renders failed sync run details", async () => {
     renderApp("/sync-history/seed-sync-002");
 
+    expect(await screen.findByText("WATCH_EXPORT_FAILED")).toBeInTheDocument();
     expect(await screen.findByText("Failure detail")).toBeInTheDocument();
     expect(
       screen.getByText("Seeded Bluetooth export unavailable; folder import required."),
     ).toBeInTheDocument();
+  });
+
+  it("retries failed sync runs from sync history", async () => {
+    renderApp("/sync-history/seed-sync-002");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Retry sync" }));
+
+    expect(await screen.findByText("Retry started")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Succeeded retry" })).toHaveAttribute(
+      "href",
+      "/sync-history/retry-sync-004",
+    );
   });
 
   it("renders chat history and sends a grounded question", async () => {
@@ -261,6 +274,24 @@ async function mockFetch(input: RequestInfo | URL, init?: RequestInit) {
 
   if (url.pathname === "/api/sync-runs/seed-sync-002") {
     return jsonResponse(syncRuns[1]);
+  }
+
+  if (url.pathname === "/api/sync-runs/seed-sync-002/retry") {
+    return jsonResponse(
+      {
+        activities_imported: 0,
+        device_id: "seed-device-forerunner-935",
+        duration_seconds: 45,
+        error_code: null,
+        error_summary: null,
+        finished_at: "2026-06-15T09:00:45Z",
+        health_records_imported: 2,
+        id: "retry-sync-004",
+        started_at: "2026-06-15T09:00:00Z",
+        status: "succeeded",
+      },
+      201,
+    );
   }
 
   if (url.pathname === "/api/chat/sessions" && init?.method === "POST") {
@@ -556,6 +587,7 @@ const syncRuns = [
     activities_imported: 1,
     device_id: "seed-device-forerunner-935",
     duration_seconds: 180,
+    error_code: null,
     error_summary: null,
     finished_at: "2026-06-15T08:33:00Z",
     health_records_imported: 6,
@@ -567,6 +599,7 @@ const syncRuns = [
     activities_imported: 0,
     device_id: "seed-device-forerunner-935",
     duration_seconds: 60,
+    error_code: "WATCH_EXPORT_FAILED",
     error_summary: "Seeded Bluetooth export unavailable; folder import required.",
     finished_at: "2026-06-14T02:01:00Z",
     health_records_imported: 0,

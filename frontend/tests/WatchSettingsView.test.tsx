@@ -232,6 +232,7 @@ async function mockFetch(input: RequestInfo | URL, init?: RequestInit) {
       activities_imported: 0,
       device_id: devices[0]?.id ?? "mock-device-1",
       duration_seconds: null,
+      error_code: null,
       error_summary: null,
       finished_at: null,
       health_records_imported: 0,

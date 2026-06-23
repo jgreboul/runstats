@@ -342,8 +342,14 @@ class ExportingHealthProvider(FakeWatchProvider):
             )
         )
 
-    def export_health(self, bluetooth_device_id: str) -> list[WatchExportPayload]:
+    def export_health(
+        self,
+        bluetooth_device_id: str,
+        *,
+        since: object | None = None,
+    ) -> list[WatchExportPayload]:
         assert bluetooth_device_id == "fake-fr-health"
+        _ = since
         return [
             WatchExportPayload(
                 kind="health",

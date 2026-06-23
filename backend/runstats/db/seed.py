@@ -192,6 +192,7 @@ def seed_development_data(
             finished_at=base_time + timedelta(days=7, hours=2, minutes=2),
             activities_imported=2,
             health_records_imported=6,
+            error_code=None,
             error_message=None,
         ),
         SyncRun(
@@ -202,6 +203,7 @@ def seed_development_data(
             finished_at=base_time + timedelta(days=13, hours=20, minutes=1),
             activities_imported=0,
             health_records_imported=0,
+            error_code="WATCH_EXPORT_FAILED",
             error_message=(
                 "Seeded Bluetooth export unavailable; folder import required."
             ),
@@ -214,6 +216,7 @@ def seed_development_data(
             finished_at=base_time + timedelta(days=14, hours=2, minutes=3),
             activities_imported=1,
             health_records_imported=6,
+            error_code=None,
             error_message=None,
         ),
     ]

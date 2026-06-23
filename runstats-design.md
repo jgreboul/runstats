@@ -421,6 +421,7 @@ Tracks sync attempts.
 | `finished_at` | DATETIME NULL | End timestamp |
 | `activities_imported` | INTEGER | Count imported |
 | `health_records_imported` | INTEGER | Count imported |
+| `error_code` | TEXT NULL | Documented failure code |
 | `error_message` | TEXT NULL | Failure detail |
 
 ### `activities`
@@ -669,9 +670,14 @@ Lists recent sync attempts.
 
 Returns one sync run.
 
+`POST /api/sync-runs/{sync_run_id}/retry`
+
+Retries a failed sync run using the device's current sync settings.
+
 `WS /api/sync-runs/{sync_run_id}/events`
 
-Streams sync progress events.
+Streams stored sync progress events. Closing the UI connection does not cancel
+the backend sync run.
 
 Example event:
 

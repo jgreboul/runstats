@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal, Protocol
 
 WatchExportKind = Literal["activity", "health"]
@@ -114,8 +115,18 @@ class WatchProvider(Protocol):
     def probe_capabilities(self, bluetooth_device_id: str) -> WatchCapabilityProbe:
         """Detect available direct export and fallback import capabilities."""
 
-    def export_activities(self, bluetooth_device_id: str) -> list[WatchExportPayload]:
+    def export_activities(
+        self,
+        bluetooth_device_id: str,
+        *,
+        since: datetime | None = None,
+    ) -> list[WatchExportPayload]:
         """Export raw activity payloads from a watch."""
 
-    def export_health(self, bluetooth_device_id: str) -> list[WatchExportPayload]:
+    def export_health(
+        self,
+        bluetooth_device_id: str,
+        *,
+        since: datetime | None = None,
+    ) -> list[WatchExportPayload]:
         """Export raw health payloads from a watch."""

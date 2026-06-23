@@ -98,8 +98,14 @@ def test_sync_service_reports_unsupported_direct_activity_export(
 
 
 class ExportingActivityProvider(FakeWatchProvider):
-    def export_activities(self, bluetooth_device_id: str) -> list[WatchExportPayload]:
+    def export_activities(
+        self,
+        bluetooth_device_id: str,
+        *,
+        since: object | None = None,
+    ) -> list[WatchExportPayload]:
         assert bluetooth_device_id == "fake-fr965-002"
+        _ = since
         return [
             WatchExportPayload(
                 kind="activity",

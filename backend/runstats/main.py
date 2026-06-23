@@ -20,6 +20,7 @@ from runstats.bluetooth import WatchProvider, create_watch_provider
 from runstats.chat import ChatResponseProvider
 from runstats.config import Settings, get_settings
 from runstats.db.session import create_session_factory, create_sqlite_engine
+from runstats.services.sync_scheduler import SyncScheduler
 from runstats.services.sync_service import SyncProgressStore
 
 
@@ -36,23 +37,37 @@ def create_app(
     resolved_watch_provider = watch_provider or create_watch_provider(
         resolved_settings.watch_provider
     )
+    sync_progress_store = SyncProgressStore()
+    sync_scheduler = SyncScheduler(
+        session_factory=session_factory,
+        provider=resolved_watch_provider,
+        runtime_settings=resolved_settings,
+        progress_store=sync_progress_store,
+        poll_interval_seconds=resolved_settings.sync_scheduler_poll_seconds,
+    )
 
     @asynccontextmanager
     async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
         app_instance.state.settings = resolved_settings
         app_instance.state.engine = engine
         app_instance.state.session_factory = session_factory
-        app_instance.state.sync_progress_store = SyncProgressStore()
+        app_instance.state.sync_progress_store = sync_progress_store
+        app_instance.state.sync_scheduler = sync_scheduler
         app_instance.state.watch_provider = resolved_watch_provider
         app_instance.state.chat_response_provider = chat_response_provider
-        yield
-        engine.dispose()
+        await sync_scheduler.start()
+        try:
+            yield
+        finally:
+            await sync_scheduler.stop()
+            engine.dispose()
 
     app = FastAPI(title="RunStats API", version="0.1.0", lifespan=lifespan)
     app.state.settings = resolved_settings
     app.state.engine = engine
     app.state.session_factory = session_factory
-    app.state.sync_progress_store = SyncProgressStore()
+    app.state.sync_progress_store = sync_progress_store
+    app.state.sync_scheduler = sync_scheduler
     app.state.watch_provider = resolved_watch_provider
     app.state.chat_response_provider = chat_response_provider
 

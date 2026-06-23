@@ -194,6 +194,7 @@ class SyncRun(Base):
         Integer, default=0, nullable=False
     )
     error_message: Mapped[str | None] = mapped_column(nullable=True)
+    error_code: Mapped[str | None] = mapped_column(nullable=True)
 
     device: Mapped[Device] = relationship(back_populates="sync_runs")
 

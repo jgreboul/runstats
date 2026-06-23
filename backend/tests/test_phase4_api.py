@@ -130,7 +130,8 @@ def test_sync_api_starts_manual_sync_and_streams_progress(tmp_path: Path) -> Non
         detail = client.get(f"/api/sync-runs/{sync_run_id}")
 
     assert created.status_code == 201
-    assert created.json()["status"] == "running"
+    assert created.json()["status"] == "succeeded"
+    assert created.json()["error_code"] is None
     assert [event["stage"] for event in events] == [
         "connecting",
         "importing_health",
@@ -174,8 +175,14 @@ class ExportingHealthProvider(FakeWatchProvider):
             )
         )
 
-    def export_health(self, bluetooth_device_id: str) -> list[WatchExportPayload]:
+    def export_health(
+        self,
+        bluetooth_device_id: str,
+        *,
+        since: object | None = None,
+    ) -> list[WatchExportPayload]:
         assert bluetooth_device_id == "fake-fr-health"
+        _ = since
         return [
             WatchExportPayload(
                 kind="health",

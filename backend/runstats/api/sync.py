@@ -24,7 +24,7 @@ def start_manual_sync(
     request: Request,
     session: SessionDep,
 ) -> SyncRunResponse:
-    """Start a fake manual sync run."""
+    """Start a manual sync run."""
 
     progress_store: SyncProgressStore = request.app.state.sync_progress_store
     watch_provider: WatchProvider = request.app.state.watch_provider
@@ -34,6 +34,24 @@ def start_manual_sync(
         watch_provider,
         runtime_settings,
     ).start_manual_sync(sync_request, progress_store)
+
+
+@router.post("/{sync_run_id}/retry", response_model=SyncRunResponse, status_code=201)
+def retry_sync(
+    sync_run_id: str,
+    request: Request,
+    session: SessionDep,
+) -> SyncRunResponse:
+    """Retry a failed sync run."""
+
+    progress_store: SyncProgressStore = request.app.state.sync_progress_store
+    watch_provider: WatchProvider = request.app.state.watch_provider
+    runtime_settings: Settings = request.app.state.settings
+    return SyncService(
+        session,
+        watch_provider,
+        runtime_settings,
+    ).retry_sync(sync_run_id, progress_store)
 
 
 @router.get("", response_model=SyncRunListResponse)
@@ -63,18 +81,14 @@ def get_sync_run(sync_run_id: str, session: SessionDep) -> SyncRunResponse:
 
 @router.websocket("/{sync_run_id}/events")
 async def stream_sync_events(websocket: WebSocket, sync_run_id: str) -> None:
-    """Stream fake progress events for a sync run."""
+    """Stream stored progress events for a sync run."""
 
     await websocket.accept()
     progress_store: SyncProgressStore = websocket.app.state.sync_progress_store
     session_factory = websocket.app.state.session_factory
-    plan = progress_store.get_plan(sync_run_id)
+    events = progress_store.get_events(sync_run_id)
 
-    if plan is not None:
-        with session_factory() as session:
-            SyncService(session).finalize_manual_sync(sync_run_id, plan)
-        events = plan.events
-    else:
+    if not events:
         with session_factory() as session:
             events = [SyncService(session).completion_event_for_run(sync_run_id)]
 
