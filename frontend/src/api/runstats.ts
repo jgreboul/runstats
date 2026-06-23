@@ -356,6 +356,30 @@ export interface DataDeletionResponse {
   deleted_chat_messages: number;
 }
 
+export interface FitFolderImportRequest {
+  device_id: string;
+  folder_path: string;
+  recursive?: boolean;
+}
+
+export interface ImportedActivityFileResult {
+  source_id: string;
+  status: "created" | "skipped" | "failed";
+  message: string;
+  sha256: string | null;
+  activity_id: string | null;
+  raw_import_id: string | null;
+  archived: boolean;
+}
+
+export interface FitFolderImportResponse {
+  created: number;
+  skipped: number;
+  failed: number;
+  raw_files_archived: number;
+  files: ImportedActivityFileResult[];
+}
+
 export interface DeviceScanRequest {
   scan_seconds?: number;
 }
@@ -646,6 +670,19 @@ export async function deleteImportedDeviceData(
     `/api/data-management/devices/${deviceId}/imported-data`,
     { method: "DELETE" },
   );
+}
+
+export async function importFitFolder(
+  request: FitFolderImportRequest,
+): Promise<FitFolderImportResponse> {
+  return requestJson<FitFolderImportResponse>("/api/imports/fit-folder", {
+    body: JSON.stringify({
+      device_id: request.device_id,
+      folder_path: request.folder_path,
+      recursive: request.recursive ?? true,
+    }),
+    method: "POST",
+  });
 }
 
 export async function startSyncRun(

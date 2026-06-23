@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   ApiError,
   buildSyncRunEventsUrl,
+  importFitFolder,
   listDevices,
   pairDevice,
   probeDeviceCapabilities,
@@ -15,6 +16,7 @@ import {
   type Device,
   type DeviceConnectionTestResponse,
   type DeviceSettingsPatchRequest,
+  type FitFolderImportResponse,
   type DiscoveredWatch,
   type PreferredUnits,
   type SyncProgressEvent,
@@ -61,6 +63,8 @@ export function WatchSettingsView() {
   const [syncEvents, setSyncEvents] = useState<SyncProgressEvent[]>([]);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [fitImportResult, setFitImportResult] =
+    useState<FitFolderImportResponse | null>(null);
 
   const devicesQuery = useQuery({
     queryKey: queryKeys.devices.list,
@@ -171,6 +175,30 @@ export function WatchSettingsView() {
     },
   });
 
+  const fitImportMutation = useMutation({
+    mutationFn: () => {
+      if (!selectedDevice) {
+        throw new Error("No watch selected.");
+      }
+
+      const folderPath = settingsForm.historical_fit_import_folder.trim();
+      if (!folderPath) {
+        throw new Error("Choose a historical FIT import folder first.");
+      }
+
+      return importFitFolder({
+        device_id: selectedDevice.id,
+        folder_path: folderPath,
+        recursive: true,
+      });
+    },
+    onSuccess: (result) => {
+      setFitImportResult(result);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.activities.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.syncRuns.all });
+    },
+  });
+
   function connectToSyncEvents(syncRun: SyncRun) {
     socketRef.current?.close();
     const socket = new WebSocket(buildSyncRunEventsUrl(syncRun.id));
@@ -210,6 +238,10 @@ export function WatchSettingsView() {
     (settingsForm.import_activities || settingsForm.import_health_stats) &&
     syncStatus !== "syncing" &&
     !syncMutation.isPending;
+  const canImportFitFolder =
+    Boolean(selectedDevice?.capabilities.supports_folder_import) &&
+    settingsForm.historical_fit_import_folder.trim().length > 0 &&
+    !fitImportMutation.isPending;
 
   return (
     <>
@@ -330,6 +362,22 @@ export function WatchSettingsView() {
               event={lastSyncEvent}
               status={syncStatus}
             />
+            <button
+              className="secondary-button"
+              disabled={!canImportFitFolder}
+              onClick={() => fitImportMutation.mutate()}
+              type="button"
+            >
+              {fitImportMutation.isPending ? "Importing..." : "Import FIT folder"}
+            </button>
+            {fitImportMutation.isError ? (
+              <ErrorState error={fitImportMutation.error} title="FIT import failed" />
+            ) : null}
+            {fitImportResult ? (
+              <FitImportSummary result={fitImportResult} />
+            ) : !settingsForm.historical_fit_import_folder.trim() ? (
+              <EmptyState title="No FIT folder selected" />
+            ) : null}
           </article>
         </section>
       ) : null}
@@ -645,6 +693,21 @@ function SyncProgress({
         <div className="progress-fill" style={{ width: `${percent}%` }} />
       </div>
       <p>{error ?? event?.message ?? "Preparing sync."}</p>
+    </div>
+  );
+}
+
+function FitImportSummary({ result }: { result: FitFolderImportResponse }) {
+  const total = result.created + result.skipped + result.failed;
+
+  return (
+    <div className="connection-result connection-result-connected" role="status">
+      <strong>
+        {result.created} imported, {result.skipped} skipped, {result.failed} failed
+      </strong>
+      <p>
+        {total} FIT files checked. {result.raw_files_archived} raw files archived.
+      </p>
     </div>
   );
 }

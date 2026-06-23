@@ -27,6 +27,7 @@ function renderWatchSettings() {
 describe("WatchSettingsView", () => {
   beforeEach(() => {
     devices = [];
+    fitImportRequest = null;
     scanFails = false;
     settingsPatch = null;
     MockWebSocket.instances = [];
@@ -95,6 +96,15 @@ describe("WatchSettingsView", () => {
     expect(MockWebSocket.instances[0]?.url).toContain(
       "/api/sync-runs/mock-sync-001/events",
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "Import FIT folder" }));
+    expect(await screen.findByText(/1 imported, 1 skipped, 0 failed/))
+      .toBeInTheDocument();
+    expect(fitImportRequest).toMatchObject({
+      device_id: "mock-device-1",
+      folder_path: "D:/Runs/FIT",
+      recursive: true,
+    });
   });
 
   it("shows Bluetooth unavailable scan errors", async () => {
@@ -109,6 +119,7 @@ describe("WatchSettingsView", () => {
 });
 
 let devices: Device[] = [];
+let fitImportRequest: unknown = null;
 let scanFails = false;
 let settingsPatch: DeviceSettingsPatchRequest | null = null;
 
@@ -239,6 +250,17 @@ async function mockFetch(input: RequestInfo | URL, init?: RequestInit) {
       id: "mock-sync-001",
       started_at: "2026-06-21T12:00:00Z",
       status: "running",
+    });
+  }
+
+  if (url.pathname === "/api/imports/fit-folder" && method === "POST") {
+    fitImportRequest = JSON.parse(String(init?.body ?? "{}"));
+    return jsonResponse({
+      created: 1,
+      failed: 0,
+      files: [],
+      raw_files_archived: 1,
+      skipped: 1,
     });
   }
 

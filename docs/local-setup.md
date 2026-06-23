@@ -130,10 +130,32 @@ database created by migrations.
 Optional seeded sandbox:
 
 ```bash
-cd backend
-uv run python -m runstats.db.seed --database-path ../data/seeded-sandbox.sqlite3
-cd ..
+uv --project backend run python -m runstats.db.seed --database-path data/seeded-sandbox.sqlite3
 ```
+
+The seed command is a one-shot database task. It writes deterministic sample
+rows, prints a JSON summary, and returns to the prompt. It does not start
+FastAPI, Vite, or any background server. If something is still listening on
+port `8000` or `5173` after this command exits, it is an earlier app process
+that should be stopped separately.
+
+To run the seeded sandbox as a single foreground app in the active terminal,
+build the frontend and start the combined local server against that database:
+
+```bash
+npm run package:frontend
+uv --project backend run runstats-local --database-path data/seeded-sandbox.sqlite3
+```
+
+This applies migrations, starts FastAPI, and serves the built React app from
+`frontend/dist` at:
+
+```text
+http://127.0.0.1:8000
+```
+
+Keep that terminal open while testing. Press `Ctrl+C` in the same terminal to
+stop the app.
 
 ## Put The Watch In A Discoverable State
 
@@ -157,6 +179,9 @@ Open terminal 1 at the repository root:
 cd backend
 uv run uvicorn runstats.main:app --reload
 ```
+
+This is a foreground development server. Keep terminal 1 open while testing and
+press `Ctrl+C` in that terminal to stop the backend.
 
 The backend listens on:
 
@@ -187,6 +212,9 @@ Open terminal 2 at the repository root:
 ```bash
 npm run frontend:dev
 ```
+
+This is a foreground development server. Keep terminal 2 open while testing and
+press `Ctrl+C` in that terminal to stop the frontend.
 
 The frontend usually listens on:
 
@@ -250,6 +278,14 @@ cd ..
 
 Replace `<device-id>` with the paired device id and replace the folder path with
 the real path on your machine.
+
+You can also import from the UI:
+
+1. Open Watch Settings.
+2. Select the physical watch.
+3. Enter the folder path in Historical FIT import folder.
+4. Click Save settings.
+5. Click Import FIT folder.
 
 After import:
 
@@ -351,6 +387,31 @@ If Watch Settings scan fails:
 - Keep the watch nearby and in a discoverable state.
 - Temporarily disable phone Bluetooth if the phone keeps reconnecting first.
 - Restart the backend after changing `.env`.
+
+If scan works but Test connection or Probe capabilities targets
+`seed-device-forerunner-935`:
+
+- The app is using the seeded sample watch, not the physical watch.
+- In Watch Settings, choose the newly paired watch from the Watch dropdown. The
+  real watch id is a UUID, and its Bluetooth address should look like a normal
+  adapter address rather than `seed-ble-forerunner-935`.
+- For hardware testing, prefer the clean real-device database from
+  `RUNSTATS_DATABASE_PATH=./data/real-device.sqlite3` instead of the seeded
+  sandbox database.
+
+If scan works for the physical watch but Test connection or Probe capabilities
+fails:
+
+- Discovery only proves the watch is advertising. Test connection and Probe
+  capabilities require a direct BLE/GATT connection, which can fail if the watch
+  has stopped advertising, left pairing mode, or reconnected to a phone.
+- Keep phone Bluetooth off during the test, keep the watch awake, and reopen the
+  watch's Pair Phone or discoverable Bluetooth screen before retrying.
+- Remove stale Windows Bluetooth pairings for the watch and pair again from
+  RunStats if Windows shows the watch but RunStats cannot connect.
+- Direct BLE activity and health export can still be unavailable after a
+  successful probe. In that case, use folder-based FIT import for activities and
+  supported health payload imports for health metrics.
 
 If Test connection fails:
 
