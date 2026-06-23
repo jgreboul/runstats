@@ -1,152 +1,146 @@
 # RunStats
 
-RunStats is a local-first Python and React application for importing Garmin
-running activities and health stats, storing them in SQLite, visualizing them in
-a React UI, and asking grounded chatbot questions about the local data.
+RunStats is a local-first running and health analytics app for Garmin watch
+data. It imports local activity and health files, stores everything in SQLite,
+visualizes the data in a React interface, and provides a grounded chat assistant
+that answers questions using the local database.
 
-The current repository includes the Phase 10 local-first experience from
-`runstats-product-backlog.md`: FastAPI query APIs, SQLite persistence,
-deterministic seed data, a React app shell, typed frontend API client,
-dashboard, activity browsing and details, health trends, sync history, watch
-settings, Bluetooth discovery through Bleak, device capability probing, FIT
-activity import, normalized health payload import, and a grounded Chat
-Assistant backed by approved read-only tools, plus local data export/delete
-controls and a production local app startup path.
+The project is designed for private, single-machine use first. Activity
+records, health metrics, raw imports, sync attempts, watch settings, and chat
+history stay on the user's computer unless a future feature explicitly adds a
+remote service.
+
+## What The App Does
+
+- Discovers and pairs Garmin watches through local Bluetooth.
+- Probes watch capabilities through a BLE/GATT connection.
+- Imports real activity history from local Garmin `.fit` files.
+- Imports supported local health payloads.
+- Stores normalized activities, laps, samples, health metrics, raw import
+  metadata, sync history, device settings, and chat history in SQLite.
+- Shows dashboard summaries, activity lists and details, health trends, sync
+  history, watch settings, and data-management controls in React.
+- Answers local-data questions through a chat assistant backed by approved
+  read-only tools.
+- Exports and deletes local data through explicit user controls.
+
+Current Garmin Forerunner testing supports Bluetooth discovery and capability
+probing, but direct Bluetooth activity and health export are not implemented.
+For real activity history, use the folder-based FIT import flow documented in
+`docs/user-guide.md` and `docs/local-setup.md`.
 
 ## Repository Layout
 
 ```text
-backend/
-  runstats/
-  tests/
-frontend/
-  src/
-  tests/
-data/
-docs/
-AGENT.md
-runstats-design.md
-runstats-product-backlog.md
+backend/    FastAPI API, SQLite models, services, importers, Bluetooth/chat providers, tests
+frontend/   React/Vite application, typed API client, browser tests, frontend tests
+docs/       User, setup, privacy, packaging, and domain documentation
+data/       Ignored local runtime data directory placeholder
 ```
 
-Local data under `data/` is ignored by source control except for
-`data/.gitkeep`.
+## Start Here
 
-## Prerequisites
+For end users:
 
-- Python 3.12 or newer
-- `uv`
-- Node.js 20 or newer
-- npm
+- Read `docs/user-guide.md`.
+- Use Watch Settings to pair a watch.
+- Import activities with a local FIT folder path such as `E:\GARMIN\ACTIVITY`.
 
-## Install
-
-For a step-by-step local development walkthrough, see
-`docs/local-setup.md`.
+For local development:
 
 ```bash
 npm run install:all
 ```
 
-This installs backend dependencies through `uv` and frontend dependencies
-through npm.
-
-## Development
-
-Run the backend development server:
+Run the backend:
 
 ```bash
 cd backend
 uv run uvicorn runstats.main:app --reload
 ```
 
-The backend healthcheck is available at:
-
-```text
-GET /api/healthcheck
-```
-
-Run the frontend development server:
+Run the frontend in a second terminal:
 
 ```bash
 npm run frontend:dev
 ```
 
-The Vite dev server proxies `/api` to `http://127.0.0.1:8000` by default. Set
-`VITE_RUNSTATS_API_BASE_URL` only when serving the frontend from an origin that
-can reach the backend directly.
+Open:
 
-Apply backend database migrations:
-
-```bash
-cd backend
-uv run alembic upgrade head
+```text
+http://127.0.0.1:5173
 ```
 
-Seed deterministic development data:
+For detailed setup, real-device validation, and troubleshooting, see
+`docs/local-setup.md`.
 
-```bash
-cd backend
-uv run python -m runstats.db.seed
-```
+## Requirements
 
-Set `RUNSTATS_DATABASE_PATH` to use a non-default SQLite file. The backend uses
-the Bleak Bluetooth provider by default; set `RUNSTATS_WATCH_PROVIDER=fake` for
-deterministic fake Garmin devices during development or tests.
-
-The Chat Assistant defaults to an Ollama-compatible local model endpoint at
-`http://127.0.0.1:11434` with model `llama3.2`. See
-`docs/chat-assistant.md` for provider settings and safety notes.
-
-## Local App Package
-
-Build the production frontend and backend package artifacts:
-
-```bash
-npm run package:local
-```
-
-Start the combined local app, which applies migrations and serves
-`frontend/dist` through FastAPI:
-
-```bash
-npm run start:local
-```
-
-See `docs/local-desktop-package.md` for package details and
-`docs/privacy-and-data-management.md` for export, delete, and hosted-privacy
-notes.
+- Python 3.12 or newer
+- `uv`
+- Node.js 20 or newer
+- npm
+- Bluetooth hardware for real watch discovery
+- Optional: Ollama for the local chat assistant
 
 ## Validation
 
-Run the full local validation suite:
+Run the full suite:
 
 ```bash
 npm run validate
 ```
 
-Install the Playwright browser once, then run browser-level end-to-end
-validation:
+Run browser-level end-to-end validation:
 
 ```bash
 npm run e2e:install
 npm run e2e
 ```
 
-Run backend validation only:
+The validation commands use fake providers and seeded local data. They do not
+require a Garmin watch, live Bluetooth device, hosted LLM, or local LLM runtime.
 
-```bash
-npm run backend:validate
-```
+## Architecture
 
-Run frontend validation only:
+The backend is a FastAPI app in `backend/runstats`. API routers translate HTTP
+requests into service calls. Services own business logic. SQLAlchemy models and
+Alembic migrations define the SQLite schema. Provider interfaces isolate
+Bluetooth and chat integrations so tests can use deterministic fakes.
 
-```bash
-npm run frontend:validate
-```
+The frontend is a Vite React app in `frontend/src`. It uses a typed API client,
+React Query for server state, route-level views for each screen, and local CSS
+for layout and visual styling. During development, Vite proxies `/api` and
+sync-progress WebSocket traffic to FastAPI.
 
-The validation commands do not require a physical Garmin watch, live Bluetooth
-device, hosted LLM, or local LLM runtime.
+The local production launcher builds the React app, applies migrations, starts
+FastAPI, and serves `frontend/dist` from the backend process.
 
-For real-device validation with Bleak and a local Ollama `gemma2` model, follow
-`docs/local-setup.md`.
+## Root Files
+
+| Path | Purpose |
+| --- | --- |
+| `.editorconfig` | Shared editor defaults for indentation, final newlines, and charset. |
+| `.env.example` | Template runtime configuration for local databases, raw archives, Bluetooth provider, chat provider, and scheduler timing. |
+| `.gitignore` | Keeps local databases, virtual environments, build output, caches, and secrets out of source control. |
+| `AGENT.md` | Project instructions and development context for coding agents. |
+| `README.md` | High-level project overview, quick start, architecture, and root file map. |
+| `package.json` | Root npm scripts that coordinate backend and frontend install, validation, build, and local app startup. |
+| `runstats-design.md` | Product and technical design notes for the RunStats experience. |
+| `runstats-product-backlog.md` | Phase backlog and implementation plan for the local-first RunStats product. |
+
+## Folder READMEs
+
+Each top-level folder has its own README with a file inventory:
+
+- `backend/README.md`
+- `frontend/README.md`
+- `docs/README.md`
+- `data/README.md`
+
+## Privacy
+
+RunStats treats activity routes, health metrics, raw files, and chat history as
+sensitive personal data. Local data is stored in the configured SQLite database
+and raw archive folder. Export and delete controls are documented in
+`docs/privacy-and-data-management.md`.

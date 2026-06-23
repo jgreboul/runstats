@@ -22,6 +22,7 @@ frontend/test-results/
 # Local RunStats data
 data/*
 !data/.gitkeep
+!data/README.md
 
 # Environment and editor files
 .env
